@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<ruleset name="KHM Plugin Standards">
+    <description>PHPCS rules for KHM Membership plugin</description>
+
+    <!-- Base standard: WordPress-Extra (stricter coding practices) -->
+    <rule ref="WordPress-Extra" />
+    <rule ref="WordPress-Docs" />
+
+    <!-- Reduce noise initially: treat warnings as non-blocking (exit code only fails on errors) -->
+    <config name="warning-severity" value="0"/>
+
+    <!-- Paths to scan -->
+    <file>khm-plugin.php</file>
+    <file>src</file>
+
+    <!-- Exclude generated or non-PHP code and vendor -->
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+    <exclude-pattern>*/bin/*</exclude-pattern>
+    <exclude-pattern>*/tests/*</exclude-pattern>
+    <exclude-pattern>*/db/*</exclude-pattern>
+    <exclude-pattern>*/email/*</exclude-pattern>
+    <exclude-pattern>*/css/*</exclude-pattern>
+    <exclude-pattern>*/js/*</exclude-pattern>
+    <exclude-pattern>*/images/*</exclude-pattern>
+    <exclude-pattern>*/adminpages/*</exclude-pattern>
+    <exclude-pattern>*/includes/*</exclude-pattern>
+
+    <!-- Allow modern PHP in namespaced code -->
+    <rule ref="WordPress.NamingConventions.ValidVariableName">
+        <severity>0</severity>
+    </rule>
+    <rule ref="WordPress.NamingConventions.ValidFunctionName">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Namespaced project: ignore WP legacy filename rules for classes -->
+    <rule ref="WordPress.Files.FileName">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Relax a few legacy-specific checks during transition -->
+    <rule ref="WordPress.PHP.YodaConditions">
+        <severity>0</severity>
+    </rule>
+    <!-- Allow short array syntax (PHP 5.4+). Note: modern WPCS maps this to Universal.Arrays. -->
+    <rule ref="Generic.Arrays.DisallowShortArraySyntax">
+        <severity>0</severity>
+    </rule>
+    <rule ref="Universal.Arrays.DisallowShortArraySyntax">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Allow spaces indentation (project uses PSR-style spaces) -->
+    <rule ref="Generic.WhiteSpace.DisallowSpaceIndent">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Don't enforce array double arrow alignment / multi-assign alignment during transition -->
+    <rule ref="WordPress.Arrays.MultipleStatementAlignment">
+        <severity>0</severity>
+    </rule>
+    <rule ref="Generic.Formatting.MultipleStatementAlignment">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Loosen multi-line call formatting for now -->
+    <rule ref="PEAR.Functions.FunctionCallSignature">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Temporarily ignore discouraged PHP functions (e.g., error_log) -->
+    <rule ref="WordPress.PHP.DiscouragedPHPFunctions">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Allow short ternary during migration -->
+    <rule ref="Universal.Operators.DisallowShortTernary">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Reduce noise from inline comment punctuation while we iterate -->
+    <rule ref="Squiz.Commenting.InlineComment">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Temporarily relax missing docblock requirements to focus on functional fixes -->
+    <rule ref="Squiz.Commenting.FileComment">
+        <severity>0</severity>
+    </rule>
+    <rule ref="Squiz.Commenting.ClassComment">
+        <severity>0</severity>
+    </rule>
+    <rule ref="Squiz.Commenting.FunctionComment">
+        <severity>0</severity>
+    </rule>
+    <rule ref="Squiz.Commenting.VariableComment">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Exclude admin page view templates for now; will lint separately with adjusted rules. -->
+    <exclude-pattern>src/Admin/pages/*</exclude-pattern>
+
+    <!-- Performance -->
+    <arg name="parallel" value="4"/>
+</ruleset>

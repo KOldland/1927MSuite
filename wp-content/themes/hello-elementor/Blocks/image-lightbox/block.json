@@ -1,0 +1,27 @@
+{
+	"apiVersion": 2,
+	"name": "custom/image-lightbox",
+	"title": "Image (Lightbox)",
+	"category": "media",
+	"icon": "format-image",
+	"description": "Image block with optional Lightbox support.",
+	"supports": {
+		"html": false
+	},
+	"attributes": {
+		"url": {
+			"type": "string"
+		},
+		"alt": {
+			"type": "string"
+		},
+		"caption": {
+			"type": "string"
+		},
+		"enableLightbox": {
+			"type": "boolean",
+			"default": false
+		}
+	},
+	"editorScript": "file:./block.js"
+}
