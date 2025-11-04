@@ -1,0 +1,253 @@
+/**
+ * KHM Integration CSS for Social Strip
+ * Styles for enhanced functionality (loading states, messages, etc.)
+ */
+
+/* Button Loading States */
+.kss-social-strip .loading {
+    position: relative;
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.kss-social-strip .loading .spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #333;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Button States */
+.kss-social-strip .disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.kss-social-strip .saved {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.kss-social-strip .saved img {
+    filter: brightness(0) invert(1);
+}
+
+/* Credit Display */
+.kss-credits-display {
+    font-size: 12px;
+    color: #666;
+    margin-top: 5px;
+    text-align: center;
+}
+
+.kss-credits-display.low-credits {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* Cart Count Display */
+.kss-cart-indicator {
+    position: relative;
+    display: inline-block;
+}
+
+.kss-cart-count {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+    line-height: 18px;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Message System */
+.kss-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 4px;
+    font-weight: 500;
+    z-index: 9999;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    max-width: 300px;
+    word-wrap: break-word;
+}
+
+.kss-message-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.kss-message-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.kss-message-info {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+/* Enhanced Button Styling */
+.kss-social-strip .kss-icon,
+.kss-social-strip button {
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.kss-social-strip .kss-icon:hover,
+.kss-social-strip button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.kss-social-strip .kss-icon:active,
+.kss-social-strip button:active {
+    transform: translateY(0);
+}
+
+/* Price Display */
+.kss-price-display {
+    font-size: 10px;
+    color: #666;
+    margin-top: 2px;
+    text-align: center;
+}
+
+.kss-price-display.member-price {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.kss-price-display.discount {
+    text-decoration: line-through;
+    color: #999;
+}
+
+/* Tooltips */
+.kss-social-strip [title] {
+    position: relative;
+}
+
+.kss-social-strip [title]:hover:after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-bottom: 5px;
+}
+
+.kss-social-strip [title]:hover:before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(0,0,0,0.8);
+    z-index: 1000;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .kss-message {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    .kss-social-strip .kss-icon,
+    .kss-social-strip button {
+        margin-bottom: 10px;
+    }
+    
+    .kss-social-strip [title]:hover:after,
+    .kss-social-strip [title]:hover:before {
+        display: none;
+    }
+}
+
+/* Member Status Indicators */
+.kss-member-indicator {
+    font-size: 10px;
+    font-weight: bold;
+    color: #28a745;
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.kss-guest-indicator {
+    font-size: 10px;
+    color: #6c757d;
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+/* Animation for successful actions */
+@keyframes success-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.kss-social-strip .success-action {
+    animation: success-pulse 0.3s ease;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .kss-message-success {
+        background: #1e3a2e;
+        color: #a3d4b0;
+        border-color: #2f5233;
+    }
+    
+    .kss-message-error {
+        background: #3d1a1a;
+        color: #e8b4b8;
+        border-color: #5a2d2d;
+    }
+    
+    .kss-message-info {
+        background: #1a2e3d;
+        color: #b4c7e8;
+        border-color: #2d475a;
+    }
+    
+    .kss-social-strip .loading .spinner {
+        border-color: #666;
+        border-top-color: #fff;
+    }
+}

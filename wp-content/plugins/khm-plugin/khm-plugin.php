@@ -267,3 +267,115 @@ add_action('plugins_loaded', function () {
         do_action('khm_marketing_suite_ready');
     }
 });
+
+// Social Strip Widget Data Function
+if (!function_exists('kss_get_enhanced_widget_data')) {
+    /**
+     * Get enhanced data for social strip widget
+     * Provides data for all 5 buttons: Download, Save, Buy, Gift, Share
+     *
+     * @param int $post_id
+     * @return array
+     */
+    function kss_get_enhanced_widget_data(int $post_id): array {
+        $user_id = get_current_user_id();
+        $post = get_post($post_id);
+        
+        if (!$post) {
+            return [];
+        }
+        
+        // Base data
+        $data = [
+            'post_id' => $post_id,
+            'post_title' => $post->post_title,
+            'post_url' => get_permalink($post_id),
+            'user_id' => $user_id,
+            'is_logged_in' => $user_id > 0,
+        ];
+        
+        // Only proceed with KHM integration if user is logged in and KHM is available
+        if ($user_id > 0 && function_exists('khm_get_user_membership')) {
+            
+            // Get user membership and credits
+            $membership = khm_get_user_membership($user_id);
+            $credits = khm_get_user_credits($user_id);
+            
+            // Download functionality (credits)
+            $data['credits'] = [
+                'available' => $credits,
+                'required' => 1,
+                'can_download' => $credits >= 1
+            ];
+            
+            // Save to Library functionality
+            $data['library'] = [
+                'is_saved' => false, // TODO: Check if article is already saved
+                'can_save' => true
+            ];
+            
+            // Buy functionality (pricing)
+            $base_price = get_post_meta($post_id, '_article_price', true) ?: 5.99;
+            $discount_info = khm_get_member_discount($user_id, $base_price, 'article');
+            
+            $data['pricing'] = [
+                'base_price' => $base_price,
+                'member_price' => $discount_info['discounted_price'],
+                'discount_percent' => $discount_info['discount_percent'],
+                'currency' => '£'
+            ];
+            
+            // Gift functionality
+            $data['gift'] = [
+                'can_gift' => true,
+                'price' => $data['pricing']['member_price']
+            ];
+            
+            // Member status
+            $data['membership'] = [
+                'is_member' => !empty($membership),
+                'level' => $membership ? $membership->level_name : null
+            ];
+        } else {
+            // Guest user defaults
+            $base_price = get_post_meta($post_id, '_article_price', true) ?: 5.99;
+            
+            $data['credits'] = [
+                'available' => 0,
+                'required' => 1,
+                'can_download' => false
+            ];
+            
+            $data['library'] = [
+                'is_saved' => false,
+                'can_save' => false
+            ];
+            
+            $data['pricing'] = [
+                'base_price' => $base_price,
+                'member_price' => $base_price,
+                'discount_percent' => 0,
+                'currency' => '£'
+            ];
+            
+            $data['gift'] = [
+                'can_gift' => true,
+                'price' => $base_price
+            ];
+            
+            $data['membership'] = [
+                'is_member' => false,
+                'level' => null
+            ];
+        }
+        
+        // Share functionality (always available)
+        $data['share'] = [
+            'title' => $post->post_title,
+            'url' => get_permalink($post_id),
+            'excerpt' => wp_trim_words($post->post_excerpt ?: $post->post_content, 30)
+        ];
+        
+        return apply_filters('kss_enhanced_widget_data', $data, $post_id, $user_id);
+    }
+}

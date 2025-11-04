@@ -157,3 +157,64 @@ if (!function_exists('khm_create_external_order')) {
         }
     }
 }
+
+// PDF & Download Helper Functions
+
+if (!function_exists('khm_generate_article_pdf')) {
+    /**
+     * Generate PDF for an article
+     *
+     * @param int $post_id
+     * @param int $user_id
+     * @return array
+     */
+    function khm_generate_article_pdf(int $post_id, int $user_id): array {
+        try {
+            return khm_call_service('generate_article_pdf', $post_id, $user_id);
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error' => 'Failed to generate PDF: ' . $e->getMessage()
+            ];
+        }
+    }
+}
+
+if (!function_exists('khm_create_download_url')) {
+    /**
+     * Create secure download URL for an article
+     *
+     * @param int $post_id
+     * @param int $user_id
+     * @param int $expires_hours
+     * @return string
+     */
+    function khm_create_download_url(int $post_id, int $user_id, int $expires_hours = 2): string {
+        try {
+            return khm_call_service('create_download_url', $post_id, $user_id, $expires_hours);
+        } catch (Exception $e) {
+            return '';
+        }
+    }
+}
+
+if (!function_exists('khm_download_with_credits')) {
+    /**
+     * Download article using credits
+     *
+     * @param int $post_id
+     * @param int $user_id
+     * @return array
+     */
+    function khm_download_with_credits(int $post_id, int $user_id): array {
+        try {
+            return khm_call_service('download_with_credits', $post_id, $user_id);
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error' => 'Failed to process download: ' . $e->getMessage(),
+                'credits_remaining' => 0
+            ];
+        }
+    }
+}

@@ -63,6 +63,7 @@ function kss_enqueue_khm_integration_scripts() {
         return;
     }
 
+    // Enqueue JavaScript
     wp_enqueue_script(
         'kss-khm-integration',
         plugin_dir_url(__FILE__) . '../assets/js/khm-integration.js',
@@ -71,15 +72,30 @@ function kss_enqueue_khm_integration_scripts() {
         true
     );
 
+    // Enqueue CSS
+    wp_enqueue_style(
+        'kss-khm-integration',
+        plugin_dir_url(__FILE__) . '../assets/css/khm-integration.css',
+        ['kss-social-strip'],
+        '1.1'
+    );
+
     // Pass data to JavaScript
-    wp_localize_script('kss-khm-integration', 'kssKhm', [
-        'ajaxUrl' => admin_url('admin-ajax.php'),
+    wp_localize_script('kss-khm-integration', 'khm_ajax', [
+        'ajax_url' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('kss_khm_integration'),
-        'currentUserId' => get_current_user_id(),
+        'current_user_id' => get_current_user_id(),
+        'gift_url' => home_url('/gift/'),
+        'checkout_url' => home_url('/checkout/'),
         'messages' => [
-            'creditUsed' => __('Credit used successfully!', 'social-strip'),
-            'purchaseComplete' => __('Purchase completed!', 'social-strip'),
-            'error' => __('Sorry, something went wrong.', 'social-strip')
+            'credit_used' => __('Credit used successfully!', 'social-strip'),
+            'purchase_complete' => __('Purchase completed!', 'social-strip'),
+            'saved_to_library' => __('Saved to library!', 'social-strip'),
+            'removed_from_library' => __('Removed from library!', 'social-strip'),
+            'added_to_cart' => __('Added to cart!', 'social-strip'),
+            'error' => __('Sorry, something went wrong.', 'social-strip'),
+            'login_required' => __('Please log in to use this feature.', 'social-strip'),
+            'insufficient_credits' => __('You don\'t have enough credits.', 'social-strip')
         ]
     ]);
 }
@@ -188,6 +204,114 @@ function kss_handle_direct_pdf_download() {
     } else {
         wp_send_json_error($result['error'] ?? 'Failed to generate PDF');
     }
+}
+
+/**
+ * Handle save to library AJAX
+ */
+add_action('wp_ajax_kss_save_to_library', 'kss_handle_save_to_library');
+function kss_handle_save_to_library() {
+    check_ajax_referer('kss_khm_integration', 'nonce');
+
+    $user_id = get_current_user_id();
+    $post_id = intval($_POST['post_id'] ?? 0);
+
+    if (!$user_id || !$post_id) {
+        wp_send_json_error('Invalid parameters');
+    }
+
+    // Use LibraryService if available
+    if (function_exists('khm_call_service')) {
+        $result = khm_call_service('save_to_library', $user_id, $post_id);
+        
+        if ($result) {
+            wp_send_json_success([
+                'message' => 'Article saved to library!',
+                'library_count' => khm_call_service('get_library_count', $user_id)
+            ]);
+        }
+    }
+    
+    wp_send_json_error('Failed to save to library');
+}
+
+/**
+ * Handle remove from library AJAX
+ */
+add_action('wp_ajax_kss_remove_from_library', 'kss_handle_remove_from_library');
+function kss_handle_remove_from_library() {
+    check_ajax_referer('kss_khm_integration', 'nonce');
+
+    $user_id = get_current_user_id();
+    $post_id = intval($_POST['post_id'] ?? 0);
+
+    if (!$user_id || !$post_id) {
+        wp_send_json_error('Invalid parameters');
+    }
+
+    // Use LibraryService if available
+    if (function_exists('khm_call_service')) {
+        $result = khm_call_service('remove_from_library', $user_id, $post_id);
+        
+        if ($result) {
+            wp_send_json_success([
+                'message' => 'Article removed from library!',
+                'library_count' => khm_call_service('get_library_count', $user_id)
+            ]);
+        }
+    }
+    
+    wp_send_json_error('Failed to remove from library');
+}
+
+/**
+ * Handle add to cart AJAX
+ */
+add_action('wp_ajax_kss_add_to_cart', 'kss_handle_add_to_cart');
+function kss_handle_add_to_cart() {
+    check_ajax_referer('kss_khm_integration', 'nonce');
+
+    $user_id = get_current_user_id();
+    $post_id = intval($_POST['post_id'] ?? 0);
+
+    if (!$user_id || !$post_id) {
+        wp_send_json_error('Invalid parameters');
+    }
+
+    // Use ECommerceService if available
+    if (function_exists('khm_call_service')) {
+        $result = khm_call_service('add_to_cart', $user_id, $post_id);
+        
+        if ($result) {
+            wp_send_json_success([
+                'message' => 'Article added to cart!',
+                'cart_count' => khm_call_service('get_cart_count', $user_id),
+                'redirect_url' => home_url('/checkout/')
+            ]);
+        }
+    }
+    
+    wp_send_json_error('Failed to add to cart');
+}
+
+/**
+ * Handle download tracking AJAX
+ */
+add_action('wp_ajax_kss_track_download', 'kss_handle_track_download');
+function kss_handle_track_download() {
+    check_ajax_referer('kss_khm_integration', 'nonce');
+
+    $user_id = get_current_user_id();
+    $download_url = sanitize_url($_POST['download_url'] ?? '');
+
+    if (!$user_id || !$download_url) {
+        wp_send_json_error('Invalid parameters');
+    }
+
+    // Track the download
+    do_action('khm_track_download', $user_id, $download_url);
+    
+    wp_send_json_success(['message' => 'Download tracked']);
 }
 
 /**
