@@ -138,7 +138,7 @@
     }
     
     /**
-     * Handle buy article
+     * Handle buy article - now opens unified modal
      */
     function handleBuyArticle($button) {
         const postId = $button.data('post-id');
@@ -147,6 +147,22 @@
             showMessage('Error: Invalid article ID', 'error');
             return;
         }
+
+        // Check if the commerce modal is available
+        if (typeof window.KHMCommerce !== 'undefined' && window.KHMCommerce.openQuickBuy) {
+            // Open the unified commerce modal for quick buy
+            window.KHMCommerce.openQuickBuy(postId);
+        } else {
+            // Fallback to old cart behavior
+            handleBuyArticleFallback($button);
+        }
+    }
+
+    /**
+     * Fallback buy article handler (legacy behavior)
+     */
+    function handleBuyArticleFallback($button) {
+        const postId = $button.data('post-id');
         
         // Show loading state
         setButtonLoading($button, true);
@@ -168,8 +184,15 @@
                     // Update cart count
                     updateCartCount(response.data.cart_count);
                     
-                    // Show cart or checkout options
-                    if (response.data.redirect_url) {
+                    // Offer to open cart modal if available
+                    if (typeof window.KHMCommerce !== 'undefined' && window.KHMCommerce.openCart) {
+                        setTimeout(() => {
+                            if (confirm('Article added to cart. Would you like to review your cart?')) {
+                                window.KHMCommerce.openCart();
+                            }
+                        }, 1000);
+                    } else if (response.data.redirect_url) {
+                        // Fallback to redirect
                         window.location.href = response.data.redirect_url;
                     }
                     

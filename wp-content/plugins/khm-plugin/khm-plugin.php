@@ -175,6 +175,11 @@ add_action('init', function () {
             $library_service = new KHM\Services\LibraryService($membership_repo);
             $library_frontend = new KHM\PublicFrontend\LibraryFrontend($library_service, $membership_repo);
         }
+
+        // Register commerce frontend (unified modal for cart/checkout)
+        if ( class_exists('KHM\\Frontend\\CommerceFrontend') ) {
+            $commerce_frontend = new KHM\Frontend\CommerceFrontend();
+        }
     }
 });
 
