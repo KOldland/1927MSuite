@@ -15,6 +15,9 @@ if ( file_exists(__DIR__ . '/vendor/autoload.php') ) {
 // Load marketing suite integration functions
 require_once __DIR__ . '/includes/marketing-suite-functions.php';
 
+// Load credit system helper functions
+require_once __DIR__ . '/includes/credit-system-helpers.php';
+
 // Minimal init: register activation/deactivation hooks and call plugin initializer if available.
 register_activation_hook(__FILE__, function () {
     // Activation tasks (create tables, etc) — use migrations in /db/migrations
@@ -26,6 +29,9 @@ register_activation_hook(__FILE__, function () {
     if ( class_exists('KHM\\Scheduled\\Scheduler') ) {
         KHM\Scheduled\Scheduler::activate();
     }
+
+    // Initialize credit system
+    do_action('khm_plugin_activated');
 });
 
 register_deactivation_hook(__FILE__, function () {

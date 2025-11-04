@@ -6,6 +6,8 @@ use KHM\Services\PluginRegistry;
 use KHM\Services\MembershipRepository;
 use KHM\Services\OrderRepository;
 use KHM\Services\LevelRepository;
+use KHM\Services\CreditService;
+use KHM\Services\PDFService;
 
 /**
  * Marketing Suite Services
@@ -17,6 +19,8 @@ class MarketingSuiteServices {
     private MembershipRepository $memberships;
     private OrderRepository $orders;
     private LevelRepository $levels;
+    private CreditService $credits;
+    private PDFService $pdf;
 
     public function __construct(
         MembershipRepository $memberships,
@@ -26,6 +30,8 @@ class MarketingSuiteServices {
         $this->memberships = $memberships;
         $this->orders = $orders;
         $this->levels = $levels;
+        $this->credits = new CreditService($memberships, $levels);
+        $this->pdf = new PDFService();
     }
 
     /**
@@ -42,10 +48,17 @@ class MarketingSuiteServices {
         PluginRegistry::register_service('process_payment', [$this, 'process_payment']);
         PluginRegistry::register_service('get_user_orders', [$this, 'get_user_orders']);
         
-        // Credit System Services
+        // Credit System Services (Enhanced)
         PluginRegistry::register_service('get_user_credits', [$this, 'get_user_credits']);
         PluginRegistry::register_service('use_credit', [$this, 'use_credit']);
         PluginRegistry::register_service('add_credits', [$this, 'add_credits']);
+        PluginRegistry::register_service('allocate_monthly_credits', [$this, 'allocate_monthly_credits']);
+        PluginRegistry::register_service('get_credit_history', [$this, 'get_credit_history']);
+        
+        // PDF & Download Services
+        PluginRegistry::register_service('generate_article_pdf', [$this, 'generate_article_pdf']);
+        PluginRegistry::register_service('create_download_url', [$this, 'create_download_url']);
+        PluginRegistry::register_service('download_with_credits', [$this, 'download_with_credits']);
         
         // Level & Pricing Services
         PluginRegistry::register_service('get_all_levels', [$this, 'get_all_levels']);
@@ -164,55 +177,30 @@ class MarketingSuiteServices {
     }
 
     /**
-     * Get user's credit balance
+     * Get user's credit balance (Enhanced)
      *
      * @param int $user_id
      * @return int
      */
     public function get_user_credits(int $user_id): int {
-        $membership = $this->get_user_membership($user_id);
-        
-        if (!$membership) {
-            return 0;
-        }
-
-        // Get credits from user meta or membership level
-        $credits = get_user_meta($user_id, 'khm_credits', true);
-        
-        if (empty($credits)) {
-            // Default credits based on membership level
-            $level = $this->levels->get($membership->membership_id);
-            $credits = $level->monthly_credits ?? 0;
-        }
-
-        return (int) $credits;
+        return $this->credits->getUserCredits($user_id);
     }
 
     /**
-     * Use a credit for a user
+     * Use credits for a user (Enhanced)
      *
      * @param int $user_id
+     * @param int $amount
      * @param string $reason
+     * @param int|null $object_id
      * @return bool
      */
-    public function use_credit(int $user_id, string $reason = 'download'): bool {
-        $current_credits = $this->get_user_credits($user_id);
-        
-        if ($current_credits <= 0) {
-            return false;
-        }
-
-        $new_credits = $current_credits - 1;
-        update_user_meta($user_id, 'khm_credits', $new_credits);
-
-        // Log credit usage
-        do_action('khm_credit_used', $user_id, $reason, $current_credits, $new_credits);
-
-        return true;
+    public function use_credit(int $user_id, int $amount = 1, string $reason = 'download', ?int $object_id = null): bool {
+        return $this->credits->useCredits($user_id, $amount, $reason, $object_id);
     }
 
     /**
-     * Add credits to a user
+     * Add credits to a user (Enhanced)
      *
      * @param int $user_id
      * @param int $amount
@@ -220,15 +208,86 @@ class MarketingSuiteServices {
      * @return bool
      */
     public function add_credits(int $user_id, int $amount, string $reason = 'manual'): bool {
-        $current_credits = $this->get_user_credits($user_id);
-        $new_credits = $current_credits + $amount;
+        return $this->credits->addBonusCredits($user_id, $amount, $reason);
+    }
+
+    /**
+     * Allocate monthly credits for a user
+     *
+     * @param int $user_id
+     * @return bool
+     */
+    public function allocate_monthly_credits(int $user_id): bool {
+        return $this->credits->allocateMonthlyCredits($user_id);
+    }
+
+    /**
+     * Get credit usage history for a user
+     *
+     * @param int $user_id
+     * @param int $limit
+     * @return array
+     */
+    public function get_credit_history(int $user_id, int $limit = 20): array {
+        return $this->credits->getCreditHistory($user_id, $limit);
+    }
+
+    /**
+     * Generate PDF for article download
+     *
+     * @param int $post_id
+     * @param int $user_id
+     * @return array
+     */
+    public function generate_article_pdf(int $post_id, int $user_id): array {
+        return $this->pdf->generateArticlePDF($post_id, $user_id);
+    }
+
+    /**
+     * Create secure download URL
+     *
+     * @param int $post_id
+     * @param int $user_id
+     * @param int $expires_hours
+     * @return string
+     */
+    public function create_download_url(int $post_id, int $user_id, int $expires_hours = 2): string {
+        return $this->pdf->createDownloadURL($post_id, $user_id, $expires_hours);
+    }
+
+    /**
+     * Complete download flow with credit usage
+     *
+     * @param int $post_id
+     * @param int $user_id
+     * @return array
+     */
+    public function download_with_credits(int $post_id, int $user_id): array {
+        // Check if user has credits
+        if ($this->get_user_credits($user_id) < 1) {
+            return [
+                'success' => false,
+                'error' => 'Insufficient credits',
+                'credits_remaining' => 0
+            ];
+        }
+
+        // Use credit
+        if (!$this->use_credit($user_id, 1, 'article_download', $post_id)) {
+            return [
+                'success' => false,
+                'error' => 'Failed to process credit usage'
+            ];
+        }
+
+        // Create download URL
+        $download_url = $this->create_download_url($post_id, $user_id);
         
-        update_user_meta($user_id, 'khm_credits', $new_credits);
-
-        // Log credit addition
-        do_action('khm_credits_added', $user_id, $amount, $reason, $current_credits, $new_credits);
-
-        return true;
+        return [
+            'success' => true,
+            'download_url' => $download_url,
+            'credits_remaining' => $this->get_user_credits($user_id)
+        ];
     }
 
     /**
@@ -237,7 +296,7 @@ class MarketingSuiteServices {
      * @return array
      */
     public function get_all_levels(): array {
-        return $this->levels->getAll();
+        return $this->levels->all();
     }
 
     /**
