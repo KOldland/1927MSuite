@@ -8,6 +8,9 @@ use KHM\Services\OrderRepository;
 use KHM\Services\LevelRepository;
 use KHM\Services\CreditService;
 use KHM\Services\PDFService;
+use KHM\Services\LibraryService;
+use KHM\Services\ECommerceService;
+use KHM\Services\EmailService;
 
 /**
  * Marketing Suite Services
@@ -21,6 +24,9 @@ class MarketingSuiteServices {
     private LevelRepository $levels;
     private CreditService $credits;
     private PDFService $pdf;
+    private LibraryService $library;
+    private ECommerceService $ecommerce;
+    private EmailService $email;
 
     public function __construct(
         MembershipRepository $memberships,
@@ -32,6 +38,9 @@ class MarketingSuiteServices {
         $this->levels = $levels;
         $this->credits = new CreditService($memberships, $levels);
         $this->pdf = new PDFService();
+        $this->library = new LibraryService($memberships);
+        $this->ecommerce = new ECommerceService($memberships, $orders);
+        $this->email = new EmailService(__DIR__ . '/../../');
     }
 
     /**
@@ -59,6 +68,27 @@ class MarketingSuiteServices {
         PluginRegistry::register_service('generate_article_pdf', [$this, 'generate_article_pdf']);
         PluginRegistry::register_service('create_download_url', [$this, 'create_download_url']);
         PluginRegistry::register_service('download_with_credits', [$this, 'download_with_credits']);
+        
+        // Library Services  
+        PluginRegistry::register_service('save_to_library', [$this, 'save_to_library']);
+        PluginRegistry::register_service('remove_from_library', [$this, 'remove_from_library']);
+        PluginRegistry::register_service('is_saved_to_library', [$this, 'is_saved_to_library']);
+        PluginRegistry::register_service('toggle_library_save', [$this, 'toggle_library_save']);
+        PluginRegistry::register_service('get_member_library', [$this, 'get_member_library']);
+        PluginRegistry::register_service('get_library_categories', [$this, 'get_library_categories']);
+        PluginRegistry::register_service('create_library_category', [$this, 'create_library_category']);
+        PluginRegistry::register_service('update_library_item', [$this, 'update_library_item']);
+        PluginRegistry::register_service('share_library_article', [$this, 'share_library_article']);
+        PluginRegistry::register_service('get_library_count', [$this, 'get_library_count']);        // eCommerce Services
+        PluginRegistry::register_service('get_article_pricing', [$this, 'get_article_pricing']);
+        PluginRegistry::register_service('add_to_cart', [$this, 'add_to_cart']);
+        PluginRegistry::register_service('remove_from_cart', [$this, 'remove_from_cart']);
+        PluginRegistry::register_service('get_cart', [$this, 'get_cart']);
+        PluginRegistry::register_service('get_cart_count', [$this, 'get_cart_count']);
+        PluginRegistry::register_service('clear_cart', [$this, 'clear_cart']);
+        PluginRegistry::register_service('process_purchase', [$this, 'process_purchase']);
+        PluginRegistry::register_service('has_purchased', [$this, 'has_purchased']);
+        PluginRegistry::register_service('get_purchase_history', [$this, 'get_purchase_history']);
         
         // Level & Pricing Services
         PluginRegistry::register_service('get_all_levels', [$this, 'get_all_levels']);
@@ -160,11 +190,11 @@ class MarketingSuiteServices {
             }
         }
 
-        // Create order object
-        $order = (object) array_merge([
+        // Create order array
+        $order = array_merge([
             'user_id' => 0,
             'membership_id' => 0,
-            'code' => $this->orders->generateOrderCode(),
+            'code' => $this->orders->generateCode(),
             'subtotal' => $order_data['total'],
             'total' => $order_data['total'],
             'currency' => 'GBP',
@@ -343,5 +373,204 @@ class MarketingSuiteServices {
             default:
                 return true;
         }
+    }
+
+    // ===================================================================
+    // LIBRARY SERVICE WRAPPER METHODS
+    // ===================================================================
+
+    /**
+     * Save article to member's library
+     */
+    public function save_to_library(int $member_id, int $post_id, int $category_id = null): bool {
+        return $this->library->save_to_library($member_id, $post_id, $category_id);
+    }
+
+    /**
+     * Remove article from member's library
+     */
+    public function remove_from_library(int $member_id, int $post_id): bool {
+        return $this->library->remove_from_library($member_id, $post_id);
+    }
+
+    /**
+     * Check if article is saved in member's library
+     */
+    public function is_saved_to_library(int $member_id, int $post_id): bool {
+        return $this->library->is_saved($member_id, $post_id);
+    }
+
+    /**
+     * Toggle save status for article
+     */
+    public function toggle_library_save(int $member_id, int $post_id): array {
+        return $this->library->toggle_save($member_id, $post_id);
+    }
+
+    /**
+     * Get member's library items
+     */
+    public function get_member_library(int $member_id, array $args = []): array {
+        return $this->library->get_member_library($member_id, $args);
+    }
+
+    /**
+     * Get member's library categories
+     */
+    public function get_library_categories(int $member_id): array {
+        return $this->library->get_member_categories($member_id);
+    }
+
+    /**
+     * Create new library category
+     */
+    public function create_library_category(int $member_id, string $category_name, string $privacy = 'private'): int {
+        return $this->library->create_category($member_id, $category_name, $privacy);
+    }
+
+    /**
+     * Get library count for member
+     */
+    public function get_library_count(int $member_id): int {
+        return $this->library->get_library_count($member_id);
+    }
+
+    // ===================================================================
+    // ECOMMERCE SERVICE WRAPPER METHODS
+    // ===================================================================
+
+    /**
+     * Get article pricing information
+     */
+    public function get_article_pricing(int $post_id, int $user_id = null): array {
+        return $this->ecommerce->get_article_pricing($post_id, $user_id);
+    }
+
+    /**
+     * Add item to shopping cart
+     */
+    public function add_to_cart(int $user_id, int $post_id, int $quantity = 1): bool {
+        return $this->ecommerce->add_to_cart($user_id, $post_id, $quantity);
+    }
+
+    /**
+     * Remove item from shopping cart
+     */
+    public function remove_from_cart(int $user_id, int $post_id): bool {
+        return $this->ecommerce->remove_from_cart($user_id, $post_id);
+    }
+
+    /**
+     * Get user's shopping cart
+     */
+    public function get_cart(int $user_id): array {
+        return $this->ecommerce->get_cart($user_id);
+    }
+
+    /**
+     * Get cart count for user
+     */
+    public function get_cart_count(int $user_id): int {
+        return $this->ecommerce->get_cart_count($user_id);
+    }
+
+    /**
+     * Clear user's shopping cart
+     */
+    public function clear_cart(int $user_id): bool {
+        return $this->ecommerce->clear_cart($user_id);
+    }
+
+    /**
+     * Process purchase
+     */
+    public function process_purchase(int $user_id, array $purchase_data): array {
+        return $this->ecommerce->process_purchase($user_id, $purchase_data);
+    }
+
+    /**
+     * Check if user has purchased an article
+     */
+    public function has_purchased(int $user_id, int $post_id): bool {
+        return $this->ecommerce->has_purchased($user_id, $post_id);
+    }
+
+    /**
+     * Get user's purchase history
+     */
+    public function get_purchase_history(int $user_id, array $args = []): array {
+        return $this->ecommerce->get_purchase_history($user_id, $args);
+    }
+
+    /**
+     * Update library item (notes, status, favorites, category)
+     *
+     * @param int $member_id
+     * @param int $post_id
+     * @param array $updates
+     * @return bool
+     */
+    public function update_library_item(int $member_id, int $post_id, array $updates): bool {
+        return $this->library->update_item($member_id, $post_id, $updates);
+    }
+
+    /**
+     * Share library article via email with personal notes
+     *
+     * @param int $member_id
+     * @param int $post_id
+     * @param string $recipient_email
+     * @param string $personal_message
+     * @param bool $include_notes
+     * @param bool $include_membership_info
+     * @return bool
+     */
+    public function share_library_article(
+        int $member_id, 
+        int $post_id, 
+        string $recipient_email, 
+        string $personal_message = '',
+        bool $include_notes = true,
+        bool $include_membership_info = true
+    ): bool {
+        // Get the library item to check if user has it saved
+        $library_item = $this->library->get_library_item($member_id, $post_id);
+        if (!$library_item) {
+            return false; // User doesn't have this article in their library
+        }
+
+        // Get article details
+        $post = \get_post($post_id);
+        if (!$post) {
+            return false;
+        }
+
+        // Get member details
+        $member = \get_userdata($member_id);
+        if (!$member) {
+            return false;
+        }
+
+        // Prepare email data
+        $email_data = [
+            'member_name' => $member->display_name,
+            'member_email' => $member->user_email,
+            'article_title' => $post->post_title,
+            'article_excerpt' => \wp_trim_words($post->post_excerpt ?: $post->post_content, 30),
+            'article_url' => \get_permalink($post_id),
+            'personal_message' => $personal_message,
+            'personal_notes' => $include_notes ? $library_item->notes : '',
+            'include_membership_info' => $include_membership_info,
+            'site_name' => \get_bloginfo('name'),
+            'site_url' => \home_url(),
+            'membership_url' => \home_url('/membership/') // Adjust as needed
+        ];
+
+        // Set email configuration
+        $this->email->setSubject("📚 {$member->display_name} shared an article with you");
+        $this->email->setFrom(\get_option('admin_email'), \get_bloginfo('name'));
+
+        // Send the email
+        return $this->email->send('library_share_article', $recipient_email, $email_data);
     }
 }

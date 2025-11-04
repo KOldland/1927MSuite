@@ -43,6 +43,31 @@ register_activation_hook(__FILE__, function () {
         }
     }
 
+    // Initialize library system tables
+    if ( class_exists('KHM\\Services\\LibraryService') ) {
+        try {
+            $memberships = new KHM\Services\MembershipRepository();
+            $library_service = new KHM\Services\LibraryService($memberships);
+            $library_service->create_tables();
+            error_log('KHM Library System tables created successfully');
+        } catch (\Exception $e) {
+            error_log('Failed to create library system tables: ' . $e->getMessage());
+        }
+    }
+
+    // Initialize eCommerce system tables
+    if ( class_exists('KHM\\Services\\ECommerceService') ) {
+        try {
+            $memberships = new KHM\Services\MembershipRepository();
+            $orders = new KHM\Services\OrderRepository();
+            $ecommerce_service = new KHM\Services\ECommerceService($memberships, $orders);
+            $ecommerce_service->create_tables();
+            error_log('KHM eCommerce System tables created successfully');
+        } catch (\Exception $e) {
+            error_log('Failed to create eCommerce system tables: ' . $e->getMessage());
+        }
+    }
+
     // Initialize credit system
     do_action('khm_plugin_activated');
 });
@@ -102,8 +127,8 @@ require_once __DIR__ . '/includes/functions.php';
 
 // Register checkout shortcode
 add_action('init', function () {
-    if ( class_exists('KHM\\PublicFrontend\\CheckoutShortcode') ) {
-        $checkout = new KHM\PublicFrontend\CheckoutShortcode(
+    if ( class_exists('KHM\\Public\\CheckoutShortcode') ) {
+        $checkout = new KHM\Public\CheckoutShortcode(
             new KHM\Services\MembershipRepository(),
             new KHM\Services\OrderRepository(),
             new KHM\Services\EmailService(__DIR__),
@@ -143,6 +168,12 @@ add_action('init', function () {
             );
             $account_shortcode->register();
             add_action('wp_enqueue_scripts', [ $account_shortcode, 'enqueue_assets' ]);
+        }
+
+        // Register library frontend
+        if ( class_exists('KHM\\PublicFrontend\\LibraryFrontend') ) {
+            $library_service = new KHM\Services\LibraryService($membership_repo);
+            $library_frontend = new KHM\PublicFrontend\LibraryFrontend($library_service, $membership_repo);
         }
     }
 });
