@@ -218,15 +218,221 @@
             return;
         }
         
-        // Open gift modal or redirect to gift page
-        if (typeof openGiftModal === 'function') {
-            openGiftModal(postId);
-        } else {
-            // Fallback to direct purchase
-            window.location.href = khm_ajax.gift_url + '?post_id=' + postId;
-        }
+        // Open gift modal
+        openGiftModal(postId);
     }
-    
+
+    /**
+     * Open gift modal with article data
+     */
+    function openGiftModal(postId) {
+        // Show loading state
+        showMessage('Loading gift options...', 'info');
+        
+        // Get gift data from server
+        $.ajax({
+            url: khm_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'kss_get_gift_data',
+                post_id: postId,
+                nonce: khm_ajax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Create and show gift modal
+                    createGiftModal(response.data);
+                } else {
+                    showMessage(response.data.error || 'Failed to load gift options', 'error');
+                }
+            },
+            error: function() {
+                showMessage('Network error. Please try again.', 'error');
+            }
+        });
+    }
+
+    /**
+     * Create and display gift modal
+     */
+    function createGiftModal(data) {
+        // Remove existing modal
+        $('#kss-gift-modal').remove();
+        
+        // Create modal HTML
+        const modalHtml = `
+            <div id="kss-gift-modal" class="kss-modal">
+                <div class="kss-modal-content">
+                    <div class="kss-modal-header">
+                        <h2>Send Article as Gift</h2>
+                        <span class="kss-modal-close">&times;</span>
+                    </div>
+                    <div class="kss-modal-body">
+                        <div class="gift-article-info">
+                            <h3>${data.post.title}</h3>
+                            <p class="article-excerpt">${data.post.excerpt}</p>
+                            <div class="gift-price">
+                                Gift Price: <strong>${data.pricing.currency}${data.pricing.member_price.toFixed(2)}</strong>
+                                ${data.pricing.discount_percent > 0 ? `<small>(${data.pricing.discount_percent}% member discount applied)</small>` : ''}
+                            </div>
+                        </div>
+                        
+                        <form id="gift-form">
+                            <div class="form-group">
+                                <label for="recipient-name">Recipient Name *</label>
+                                <input type="text" id="recipient-name" name="recipient_name" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="recipient-email">Recipient Email *</label>
+                                <input type="email" id="recipient-email" name="recipient_email" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="sender-name">Your Name *</label>
+                                <input type="text" id="sender-name" name="sender_name" value="${data.sender.name}" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="gift-message">Personal Message</label>
+                                <textarea id="gift-message" name="gift_message" rows="4" placeholder="Add a personal message (optional)"></textarea>
+                                
+                                <div class="message-templates">
+                                    <label>Quick Templates:</label>
+                                    <div class="template-buttons">
+                                        <button type="button" class="template-btn" data-template="birthday">Birthday</button>
+                                        <button type="button" class="template-btn" data-template="holiday">Holiday</button>
+                                        <button type="button" class="template-btn" data-template="thank_you">Thank You</button>
+                                        <button type="button" class="template-btn" data-template="thinking_of_you">Thinking of You</button>
+                                        <button type="button" class="template-btn" data-template="professional">Professional</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="payment-method">Payment Method</label>
+                                <select id="payment-method" name="payment_method">
+                                    <option value="stripe">Credit Card</option>
+                                    <option value="paypal">PayPal</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" class="btn-cancel">Cancel</button>
+                                <button type="submit" class="btn-send-gift">Send Gift</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to page
+        $('body').append(modalHtml);
+        
+        // Store template messages for quick access
+        window.giftTemplates = data.templates;
+        
+        // Bind modal events
+        bindGiftModalEvents(data);
+        
+        // Show modal
+        $('#kss-gift-modal').fadeIn();
+    }
+
+    /**
+     * Bind events for gift modal
+     */
+    function bindGiftModalEvents(data) {
+        const $modal = $('#kss-gift-modal');
+        
+        // Close modal
+        $modal.on('click', '.kss-modal-close, .btn-cancel', function() {
+            closeGiftModal();
+        });
+        
+        // Close on outside click
+        $modal.on('click', function(e) {
+            if (e.target === this) {
+                closeGiftModal();
+            }
+        });
+        
+        // Template buttons
+        $modal.on('click', '.template-btn', function() {
+            const template = $(this).data('template');
+            if (window.giftTemplates && window.giftTemplates[template]) {
+                $('#gift-message').val(window.giftTemplates[template]);
+            }
+        });
+        
+        // Form submission
+        $modal.on('submit', '#gift-form', function(e) {
+            e.preventDefault();
+            sendGift(data);
+        });
+    }
+
+    /**
+     * Send gift via AJAX
+     */
+    function sendGift(data) {
+        const $form = $('#gift-form');
+        const $submitBtn = $form.find('.btn-send-gift');
+        
+        // Validate form
+        if (!$form[0].checkValidity()) {
+            $form[0].reportValidity();
+            return;
+        }
+        
+        // Set loading state
+        $submitBtn.prop('disabled', true).text('Sending Gift...');
+        
+        // Prepare form data
+        const formData = {
+            action: 'kss_send_gift',
+            post_id: data.post.id,
+            recipient_name: $('#recipient-name').val(),
+            recipient_email: $('#recipient-email').val(),
+            sender_name: $('#sender-name').val(),
+            gift_message: $('#gift-message').val(),
+            payment_method: $('#payment-method').val(),
+            gift_price: data.pricing.original_price,
+            nonce: khm_ajax.nonce
+        };
+        
+        // Send AJAX request
+        $.ajax({
+            url: khm_ajax.ajax_url,
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                $submitBtn.prop('disabled', false).text('Send Gift');
+                
+                if (response.success) {
+                    showMessage('Gift sent successfully! The recipient will receive an email shortly.', 'success');
+                    closeGiftModal();
+                } else {
+                    showMessage(response.data.error || 'Failed to send gift', 'error');
+                }
+            },
+            error: function() {
+                $submitBtn.prop('disabled', false).text('Send Gift');
+                showMessage('Network error. Please try again.', 'error');
+            }
+        });
+    }
+
+    /**
+     * Close gift modal
+     */
+    function closeGiftModal() {
+        $('#kss-gift-modal').fadeOut(function() {
+            $(this).remove();
+        });
+    }
+
     /**
      * Handle direct download (for purchased articles)
      */

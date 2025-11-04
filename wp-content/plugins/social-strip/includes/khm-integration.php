@@ -49,9 +49,17 @@ function kss_register_with_khm() {
         add_action('wp_ajax_kss_download_with_credit', 'kss_handle_credit_download');
         add_action('wp_ajax_kss_direct_pdf_download', 'kss_handle_direct_pdf_download');
         
+        // Gift functionality AJAX handlers
+        add_action('wp_ajax_kss_send_gift', 'kss_handle_send_gift');
+        add_action('wp_ajax_kss_get_gift_data', 'kss_handle_get_gift_data');
+        
         // Add PDF download handler for non-logged in users with tokens
         add_action('wp_ajax_nopriv_khm_download_pdf', 'kss_handle_secure_pdf_download');
         add_action('wp_ajax_khm_download_pdf', 'kss_handle_secure_pdf_download');
+        
+        // Gift redemption handlers (both logged in and anonymous)
+        add_action('wp_ajax_kss_redeem_gift', 'kss_handle_gift_redemption');
+        add_action('wp_ajax_nopriv_kss_redeem_gift', 'kss_handle_gift_redemption');
     }
 }
 
@@ -350,4 +358,181 @@ function kss_get_enhanced_widget_data($post_id, $original_data) {
         'has_membership' => !is_null($membership),
         'credit_history' => khm_get_credit_history($user_id, 5) // Last 5 transactions
     ]);
+}
+
+/**
+ * Handle send gift AJAX request
+ */
+function kss_handle_send_gift() {
+    check_ajax_referer('kss_khm_integration', 'nonce');
+
+    $user_id = get_current_user_id();
+    if (!$user_id) {
+        wp_send_json_error('Login required to send gifts');
+    }
+
+    // Validate required fields
+    $required_fields = ['post_id', 'recipient_email', 'recipient_name', 'sender_name', 'gift_price'];
+    foreach ($required_fields as $field) {
+        if (empty($_POST[$field])) {
+            wp_send_json_error("Missing required field: {$field}");
+        }
+    }
+
+    $post_id = intval($_POST['post_id']);
+    $gift_price = floatval($_POST['gift_price']);
+
+    // Get member discount
+    $pricing = khm_get_member_discount($user_id, $gift_price, 'article');
+    $final_price = $pricing['discounted_price'];
+
+    // Create gift using GiftService
+    if (function_exists('khm_call_service')) {
+        $gift_data = [
+            'post_id' => $post_id,
+            'sender_id' => $user_id,
+            'recipient_email' => sanitize_email($_POST['recipient_email']),
+            'recipient_name' => sanitize_text_field($_POST['recipient_name']),
+            'sender_name' => sanitize_text_field($_POST['sender_name']),
+            'sender_email' => wp_get_current_user()->user_email,
+            'gift_message' => sanitize_textarea_field($_POST['gift_message'] ?? ''),
+            'gift_price' => $final_price,
+            'member_discount' => $pricing['discount_amount'] ?? 0,
+            'payment_method' => sanitize_text_field($_POST['payment_method'] ?? 'stripe')
+        ];
+
+        try {
+            $gift_service = new KHM\Services\GiftService(
+                new KHM\Services\MembershipRepository(),
+                new KHM\Services\OrderRepository(),
+                new KHM\Services\EmailService(__DIR__ . '/../../khm-plugin/')
+            );
+
+            $result = $gift_service->create_gift($gift_data);
+
+            if ($result['success']) {
+                // Send the gift email
+                $email_result = $gift_service->send_gift_email($result['gift_id']);
+                
+                if ($email_result['success']) {
+                    wp_send_json_success([
+                        'message' => 'Gift sent successfully!',
+                        'gift_id' => $result['gift_id'],
+                        'final_price' => $final_price,
+                        'expires_at' => $result['expires_at']
+                    ]);
+                } else {
+                    wp_send_json_error('Gift created but email failed: ' . $email_result['error']);
+                }
+            } else {
+                wp_send_json_error($result['error'] ?? 'Failed to create gift');
+            }
+
+        } catch (Exception $e) {
+            error_log('Gift creation error: ' . $e->getMessage());
+            wp_send_json_error('Failed to process gift request');
+        }
+    } else {
+        wp_send_json_error('Gift service not available');
+    }
+}
+
+/**
+ * Handle get gift data for modal AJAX request
+ */
+function kss_handle_get_gift_data() {
+    check_ajax_referer('kss_khm_integration', 'nonce');
+
+    $user_id = get_current_user_id();
+    if (!$user_id) {
+        wp_send_json_error('Login required');
+    }
+
+    $post_id = intval($_POST['post_id'] ?? 0);
+    if (!$post_id) {
+        wp_send_json_error('Invalid post ID');
+    }
+
+    $post = get_post($post_id);
+    if (!$post || $post->post_status !== 'publish') {
+        wp_send_json_error('Article not found');
+    }
+
+    // Get current user info
+    $current_user = wp_get_current_user();
+    
+    // Get pricing
+    $base_price = get_post_meta($post_id, '_article_price', true) ?: 5.99;
+    $pricing = khm_get_member_discount($user_id, $base_price, 'article');
+
+    // Get gift template messages
+    $template_messages = [
+        'birthday' => "Happy Birthday! I thought you'd enjoy this article: \"{$post->post_title}\". Hope you have a wonderful day!",
+        'holiday' => "Season's Greetings! I came across this great article and thought you might find it interesting: \"{$post->post_title}\". Enjoy!",
+        'thank_you' => "Thank you so much! As a token of my appreciation, I'd like to share this article with you: \"{$post->post_title}\". Hope you enjoy it!",
+        'thinking_of_you' => "I was thinking of you and came across this article: \"{$post->post_title}\". Thought you might find it as interesting as I did!",
+        'professional' => "I thought this article might be relevant to your work: \"{$post->post_title}\". Hope you find it valuable!",
+        'custom' => "I'd like to share this article with you: \"{$post->post_title}\". I think you'll find it interesting!"
+    ];
+
+    wp_send_json_success([
+        'post' => [
+            'id' => $post_id,
+            'title' => $post->post_title,
+            'excerpt' => wp_trim_words(get_the_excerpt($post) ?: $post->post_content, 30),
+            'url' => get_permalink($post_id)
+        ],
+        'pricing' => [
+            'original_price' => $base_price,
+            'member_price' => $pricing['discounted_price'],
+            'discount_percent' => $pricing['discount_percent'] ?? 0,
+            'currency' => get_option('woocommerce_currency', '£')
+        ],
+        'sender' => [
+            'name' => $current_user->display_name,
+            'email' => $current_user->user_email
+        ],
+        'templates' => $template_messages
+    ]);
+}
+
+/**
+ * Handle gift redemption AJAX request
+ */
+function kss_handle_gift_redemption() {
+    // This can be called by logged-in or anonymous users
+    $user_id = get_current_user_id();
+    
+    $token = sanitize_text_field($_POST['token'] ?? '');
+    $redemption_type = sanitize_text_field($_POST['redemption_type'] ?? 'download');
+
+    if (empty($token)) {
+        wp_send_json_error('Invalid redemption token');
+    }
+
+    try {
+        $gift_service = new KHM\Services\GiftService(
+            new KHM\Services\MembershipRepository(),
+            new KHM\Services\OrderRepository(),
+            new KHM\Services\EmailService(__DIR__ . '/../../khm-plugin/')
+        );
+
+        $result = $gift_service->redeem_gift($token, $redemption_type, $user_id);
+
+        if ($result['success']) {
+            wp_send_json_success([
+                'message' => 'Gift redeemed successfully!',
+                'download_url' => $result['download_url'] ?? null,
+                'filename' => $result['filename'] ?? null,
+                'saved_to_library' => $result['saved_to_library'] ?? false,
+                'redemption_type' => $result['redemption_type']
+            ]);
+        } else {
+            wp_send_json_error($result['error'] ?? 'Failed to redeem gift');
+        }
+
+    } catch (Exception $e) {
+        error_log('Gift redemption error: ' . $e->getMessage());
+        wp_send_json_error('Failed to process redemption');
+    }
 }

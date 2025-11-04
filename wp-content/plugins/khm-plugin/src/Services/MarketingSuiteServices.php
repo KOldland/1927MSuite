@@ -10,6 +10,7 @@ use KHM\Services\CreditService;
 use KHM\Services\PDFService;
 use KHM\Services\LibraryService;
 use KHM\Services\ECommerceService;
+use KHM\Services\GiftService;
 use KHM\Services\EmailService;
 
 /**
@@ -26,6 +27,7 @@ class MarketingSuiteServices {
     private PDFService $pdf;
     private LibraryService $library;
     private ECommerceService $ecommerce;
+    private GiftService $gift;
     private EmailService $email;
 
     public function __construct(
@@ -40,6 +42,7 @@ class MarketingSuiteServices {
         $this->pdf = new PDFService();
         $this->library = new LibraryService($memberships);
         $this->ecommerce = new ECommerceService($memberships, $orders);
+        $this->gift = new GiftService($memberships, $orders, new EmailService(__DIR__ . '/../../'));
         $this->email = new EmailService(__DIR__ . '/../../');
     }
 
@@ -89,6 +92,13 @@ class MarketingSuiteServices {
         PluginRegistry::register_service('process_purchase', [$this, 'process_purchase']);
         PluginRegistry::register_service('has_purchased', [$this, 'has_purchased']);
         PluginRegistry::register_service('get_purchase_history', [$this, 'get_purchase_history']);
+        
+        // Gift Services
+        PluginRegistry::register_service('send_gift', [$this, 'send_gift']);
+        PluginRegistry::register_service('redeem_gift', [$this, 'redeem_gift']);
+        PluginRegistry::register_service('get_gift_data', [$this, 'get_gift_data']);
+        PluginRegistry::register_service('get_sent_gifts', [$this, 'get_sent_gifts']);
+        PluginRegistry::register_service('get_received_gifts', [$this, 'get_received_gifts']);
         
         // Level & Pricing Services
         PluginRegistry::register_service('get_all_levels', [$this, 'get_all_levels']);
@@ -572,5 +582,103 @@ class MarketingSuiteServices {
 
         // Send the email
         return $this->email->send('library_share_article', $recipient_email, $email_data);
+    }
+
+    // ====================================
+    // GIFT SERVICES
+    // ====================================
+
+    /**
+     * Send a gift to a recipient
+     *
+     * @param int $post_id Article to gift
+     * @param int $sender_id User sending the gift
+     * @param string $recipient_email Recipient's email
+     * @param string $recipient_name Recipient's name
+     * @param string $gift_message Optional personal message
+     * @param int $expires_days Days until gift expires (default 30)
+     * @return array ['success' => bool, 'gift_id' => int|null, 'message' => string]
+     */
+    public function send_gift(int $post_id, int $sender_id, string $recipient_email, string $recipient_name, string $gift_message = '', int $expires_days = 30): array {
+        // Get sender information
+        $sender = \get_user_by('ID', $sender_id);
+        if (!$sender) {
+            return [
+                'success' => false,
+                'error' => 'Invalid sender'
+            ];
+        }
+
+        // Get post information for pricing
+        $post = \get_post($post_id);
+        if (!$post) {
+            return [
+                'success' => false,
+                'error' => 'Invalid article'
+            ];
+        }
+
+        // Get article pricing (you may need to adjust this based on your pricing logic)
+        $gift_price = apply_filters('khm_gift_article_price', 5.00, $post_id); // Default $5
+
+        // Prepare gift data
+        $gift_data = [
+            'post_id' => $post_id,
+            'sender_id' => $sender_id,
+            'sender_name' => $sender->display_name,
+            'recipient_email' => $recipient_email,
+            'recipient_name' => $recipient_name,
+            'gift_message' => $gift_message,
+            'gift_price' => $gift_price,
+            'expires_days' => $expires_days
+        ];
+
+        return $this->gift->create_gift($gift_data);
+    }
+
+    /**
+     * Redeem a gift using its token
+     *
+     * @param string $token Gift token
+     * @param string $redemption_type Type: 'download', 'library_save', or 'both'
+     * @param int $user_id Optional user ID (for library saves)
+     * @return array ['success' => bool, 'download_url' => string|null, 'saved_to_library' => bool, 'message' => string]
+     */
+    public function redeem_gift(string $token, string $redemption_type = 'download', int $user_id = 0): array {
+        return $this->gift->redeem_gift($token, $redemption_type, $user_id);
+    }
+
+    /**
+     * Get gift data by token
+     *
+     * @param string $token Gift token
+     * @return array|null Gift data or null if not found/expired
+     */
+    public function get_gift_data(string $token): ?array {
+        return $this->gift->get_gift_by_token($token);
+    }
+
+    /**
+     * Get gifts sent by a user
+     *
+     * @param int $user_id Sender user ID
+     * @param int $limit Number of gifts to return
+     * @param int $offset Pagination offset
+     * @return array List of sent gifts
+     */
+    public function get_sent_gifts(int $user_id, int $limit = 20, int $offset = 0): array {
+        return $this->gift->get_sent_gifts($user_id, $limit, $offset);
+    }
+
+    /**
+     * Get gifts received by an email address
+     *
+     * @param string $email Recipient email
+     * @param int $limit Number of gifts to return
+     * @param int $offset Pagination offset
+     * @return array List of received gifts
+     */
+    public function get_received_gifts(string $email, int $limit = 20, int $offset = 0): array {
+        return $this->gift->get_received_gifts($email, $limit, $offset);
     }
 }

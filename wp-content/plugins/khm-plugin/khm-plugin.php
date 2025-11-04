@@ -68,6 +68,20 @@ register_activation_hook(__FILE__, function () {
         }
     }
 
+    // Initialize gift system tables
+    if ( class_exists('KHM\\Services\\GiftService') ) {
+        try {
+            $memberships = new KHM\Services\MembershipRepository();
+            $orders = new KHM\Services\OrderRepository();
+            $email = new KHM\Services\EmailService(__DIR__);
+            $gift_service = new KHM\Services\GiftService($memberships, $orders, $email);
+            $gift_service->create_tables();
+            error_log('KHM Gift System tables created successfully');
+        } catch (\Exception $e) {
+            error_log('Failed to create gift system tables: ' . $e->getMessage());
+        }
+    }
+
     // Initialize credit system
     do_action('khm_plugin_activated');
 });
