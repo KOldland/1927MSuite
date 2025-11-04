@@ -1,20 +1,137 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.5/phpunit.xsd"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.1/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
          colors="true"
-         verbose="true"
+         executionOrder="defects"
          failOnWarning="true"
          failOnRisky="true"
-         stopOnFailure="false">
+         failOnEmptyTestSuite="true"
+         beStrictAboutOutputDuringTests="true"
+         verbose="true"
+         timeoutForSmallTests="60"
+         timeoutForMediumTests="120"
+         timeoutForLargeTests="300">
+    
     <testsuites>
-        <testsuite name="KHM Test Suite">
+        <!-- Core functionality tests -->
+        <testsuite name="Enhanced Email Service">
+            <file>tests/EnhancedEmailServiceTest.php</file>
+        </testsuite>
+        
+        <!-- Integration tests -->
+        <testsuite name="Email Delivery Integration">
+            <file>tests/EnhancedEmailDeliveryTest.php</file>
+        </testsuite>
+        
+        <!-- Queue system tests -->
+        <testsuite name="Email Queue System">
+            <file>tests/EnhancedEmailQueueTest.php</file>
+        </testsuite>
+        
+        <!-- Admin interface tests -->
+        <testsuite name="Admin Interface">
+            <file>tests/EnhancedEmailAdminTest.php</file>
+        </testsuite>
+        
+        <!-- Performance tests -->
+        <testsuite name="Performance Tests">
+            <file>tests/EnhancedEmailPerformanceTest.php</file>
+        </testsuite>
+        
+        <!-- Security tests -->
+        <testsuite name="Security Tests">
+            <file>tests/EnhancedEmailSecurityTest.php</file>
+        </testsuite>
+        
+        <!-- All tests suite -->
+        <testsuite name="All Enhanced Email Tests">
             <directory>tests</directory>
         </testsuite>
     </testsuites>
-    <coverage processUncoveredFiles="true">
+
+    <!-- PHP source code coverage -->
+    <source>
         <include>
-            <directory suffix=".php">src</directory>
+            <directory suffix=".php">includes/Services</directory>
+            <directory suffix=".php">includes/Admin</directory>
+            <file>khm-plugin.php</file>
         </include>
+        <exclude>
+            <directory>tests</directory>
+            <directory>vendor</directory>
+            <directory>node_modules</directory>
+        </exclude>
+    </source>
+
+    <!-- Coverage reporting -->
+    <coverage>
+        <report>
+            <html outputDirectory="tests/coverage-html"/>
+            <xml outputDirectory="tests/coverage-xml"/>
+            <clover outputFile="tests/coverage.xml"/>
+            <text outputFile="tests/coverage.txt"/>
+        </report>
     </coverage>
+
+    <!-- Logging -->
+    <logging>
+        <junit outputFile="tests/junit-results.xml"/>
+        <teamcity outputFile="tests/teamcity-results.xml"/>
+        <testdoxHtml outputFile="tests/testdox.html"/>
+        <testdoxText outputFile="tests/testdox.txt"/>
+    </logging>
+
+    <!-- Environment variables for testing -->
+    <php>
+        <!-- Test email credentials (set these in your environment) -->
+        <env name="TEST_EMAIL_RECIPIENT" value="test@example.com"/>
+        <env name="TEST_EMAIL_SENDER" value="noreply@example.com"/>
+        
+        <!-- Gmail SMTP credentials for integration tests -->
+        <env name="GMAIL_SMTP_USERNAME" value=""/>
+        <env name="GMAIL_SMTP_PASSWORD" value=""/>
+        
+        <!-- Custom SMTP credentials -->
+        <env name="CUSTOM_SMTP_HOST" value=""/>
+        <env name="CUSTOM_SMTP_PORT" value="587"/>
+        <env name="CUSTOM_SMTP_ENCRYPTION" value="tls"/>
+        <env name="CUSTOM_SMTP_USERNAME" value=""/>
+        <env name="CUSTOM_SMTP_PASSWORD" value=""/>
+        <env name="CUSTOM_SMTP_FROM_EMAIL" value=""/>
+        
+        <!-- SendGrid API credentials -->
+        <env name="SENDGRID_API_KEY" value=""/>
+        <env name="SENDGRID_FROM_EMAIL" value=""/>
+        
+        <!-- Mailgun API credentials -->
+        <env name="MAILGUN_API_KEY" value=""/>
+        <env name="MAILGUN_DOMAIN" value=""/>
+        <env name="MAILGUN_FROM_EMAIL" value=""/>
+        
+        <!-- Test configuration flags -->
+        <env name="TEST_RATE_LIMITING" value="false"/>
+        <env name="SKIP_LIVE_EMAIL_TESTS" value="true"/>
+        <env name="TEST_PERFORMANCE_HEAVY" value="false"/>
+        
+        <!-- WordPress test configuration -->
+        <env name="WP_TESTS_DOMAIN" value="example.org"/>
+        <env name="WP_TESTS_EMAIL" value="admin@example.org"/>
+        <env name="WP_TESTS_TITLE" value="Test Blog"/>
+        
+        <!-- Memory and timeout settings -->
+        <ini name="memory_limit" value="512M"/>
+        <ini name="max_execution_time" value="300"/>
+        
+        <!-- Error reporting -->
+        <ini name="error_reporting" value="-1"/>
+        <ini name="display_errors" value="1"/>
+        <ini name="display_startup_errors" value="1"/>
+        <ini name="log_errors" value="1"/>
+    </php>
+
+    <!-- Extensions -->
+    <extensions>
+        <!-- Add any PHPUnit extensions here -->
+    </extensions>
 </phpunit>

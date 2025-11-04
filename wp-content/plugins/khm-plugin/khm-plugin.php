@@ -442,3 +442,36 @@ if (!function_exists('kss_get_enhanced_widget_data')) {
         return apply_filters('kss_enhanced_widget_data', $data, $post_id, $user_id);
     }
 }
+
+// Initialize Enhanced Email System
+add_action('plugins_loaded', function () {
+    if ( class_exists('KHM\\Services\\EnhancedEmailService') && 
+         class_exists('KHM\\Admin\\EnhancedEmailAdmin') &&
+         class_exists('KHM\\Migrations\\EnhancedEmailMigration') ) {
+        
+        // Initialize enhanced email service
+        $enhanced_email_service = new KHM\Services\EnhancedEmailService(
+            plugin_dir_path(__FILE__)
+        );
+        
+        // Initialize admin interface
+        if (is_admin()) {
+            new KHM\Admin\EnhancedEmailAdmin($enhanced_email_service);
+        }
+        
+        // Register enhanced email service globally
+        $GLOBALS['khm_enhanced_email'] = $enhanced_email_service;
+        
+        // Fire hook to let other plugins know enhanced email is ready
+        do_action('khm_enhanced_email_ready', $enhanced_email_service);
+    }
+});
+
+// Enhanced Email Cron Schedule
+add_filter('cron_schedules', function($schedules) {
+    $schedules['every_five_minutes'] = array(
+        'interval' => 300, // 5 minutes in seconds
+        'display'  => __('Every 5 Minutes', 'khm-plugin')
+    );
+    return $schedules;
+});

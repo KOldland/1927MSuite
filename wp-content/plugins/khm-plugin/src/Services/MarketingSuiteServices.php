@@ -42,8 +42,14 @@ class MarketingSuiteServices {
         $this->pdf = new PDFService();
         $this->library = new LibraryService($memberships);
         $this->ecommerce = new ECommerceService($memberships, $orders);
-        $this->gift = new GiftService($memberships, $orders, new EmailService(__DIR__ . '/../../'));
-        $this->email = new EmailService(__DIR__ . '/../../');
+        
+        // Use enhanced email service if available, otherwise fall back to basic email service
+        $email_service = isset($GLOBALS['khm_enhanced_email']) && $GLOBALS['khm_enhanced_email'] instanceof \KHM\Services\EnhancedEmailService
+            ? $GLOBALS['khm_enhanced_email']
+            : new EmailService(__DIR__ . '/../../');
+            
+        $this->gift = new GiftService($memberships, $orders, $email_service);
+        $this->email = $email_service;
     }
 
     /**
