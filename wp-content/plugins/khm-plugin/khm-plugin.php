@@ -30,6 +30,19 @@ register_activation_hook(__FILE__, function () {
         KHM\Scheduled\Scheduler::activate();
     }
 
+    // Initialize credit system tables
+    if ( class_exists('KHM\\Services\\CreditService') ) {
+        try {
+            $memberships = new KHM\Services\MembershipRepository();
+            $levels = new KHM\Services\LevelRepository();
+            $credit_service = new KHM\Services\CreditService($memberships, $levels);
+            $credit_service->createTables();
+            error_log('KHM Credit System tables created successfully');
+        } catch (\Exception $e) {
+            error_log('Failed to create credit system tables: ' . $e->getMessage());
+        }
+    }
+
     // Initialize credit system
     do_action('khm_plugin_activated');
 });
