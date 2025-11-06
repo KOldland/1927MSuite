@@ -77,6 +77,10 @@ class KSS_KHM_Integration {
             // Gift redemption handlers (both logged in and anonymous)
             add_action('wp_ajax_kss_redeem_gift', [$this, 'handle_gift_redemption']);
             add_action('wp_ajax_nopriv_kss_redeem_gift', [$this, 'handle_gift_redemption']);
+            
+            // Affiliate URL generation for social sharing
+            add_action('wp_ajax_kss_get_affiliate_url', [$this, 'handle_get_affiliate_url']);
+            add_action('wp_ajax_nopriv_kss_get_affiliate_url', [$this, 'handle_get_affiliate_url']);
         }
     }
 
@@ -580,10 +584,65 @@ class KSS_KHM_Integration {
             } else {
                 wp_send_json_error($result['error'] ?? 'Failed to redeem gift');
             }
-
         } catch (Exception $e) {
-            error_log('Gift redemption error: ' . $e->getMessage());
-            wp_send_json_error('Failed to process redemption');
+            wp_send_json_error('Gift service not available');
+        }
+    }
+
+    /**
+     * Handle get affiliate URL AJAX
+     * Generates member-specific affiliate URLs for social sharing
+     */
+    public function handle_get_affiliate_url() {
+        check_ajax_referer('kss_khm_integration', 'nonce');
+
+        $user_id = get_current_user_id();
+        $post_id = intval($_POST['post_id'] ?? 0);
+        $base_url = esc_url_raw($_POST['base_url'] ?? '');
+
+        // If no user, return the regular URL
+        if (!$user_id) {
+            wp_send_json_success([
+                'affiliate_url' => $base_url ?: get_permalink($post_id),
+                'has_affiliate' => false
+            ]);
+            return;
+        }
+
+        if (!$post_id) {
+            wp_send_json_error('Invalid post ID');
+            return;
+        }
+
+        // Use AffiliateService to generate URL
+        if (function_exists('khm_call_service')) {
+            $url_to_use = $base_url ?: get_permalink($post_id);
+            
+            $result = khm_call_service('generate_affiliate_url', [
+                'member_id' => $user_id,
+                'base_url' => $url_to_use,
+                'post_id' => $post_id
+            ]);
+            
+            if ($result && !empty($result)) {
+                wp_send_json_success([
+                    'affiliate_url' => $result,
+                    'has_affiliate' => true,
+                    'member_id' => $user_id
+                ]);
+            } else {
+                // Fallback to regular URL if affiliate generation fails
+                wp_send_json_success([
+                    'affiliate_url' => $url_to_use,
+                    'has_affiliate' => false
+                ]);
+            }
+        } else {
+            // Fallback if affiliate service is not available
+            wp_send_json_success([
+                'affiliate_url' => $base_url ?: get_permalink($post_id),
+                'has_affiliate' => false
+            ]);
         }
     }
 }
@@ -633,3 +692,70 @@ add_action('wp_ajax_kss_track_download', function() {
     }
     $integration_instance->handle_track_download();
 });
+
+// Add affiliate URL generation handler
+add_action('wp_ajax_kss_get_affiliate_url', 'kss_handle_get_affiliate_url');
+add_action('wp_ajax_nopriv_kss_get_affiliate_url', 'kss_handle_get_affiliate_url');
+
+/**
+ * Handle affiliate URL generation AJAX request
+ */
+function kss_handle_get_affiliate_url() {
+    // Verify nonce
+    if (!wp_verify_nonce($_POST['nonce'] ?? '', 'kss_khm_integration')) {
+        wp_send_json_error('Invalid nonce');
+        return;
+    }
+
+    $user_id = get_current_user_id();
+    $post_id = intval($_POST['post_id'] ?? 0);
+    $base_url = esc_url_raw($_POST['base_url'] ?? '');
+
+    // If no user, return the regular URL
+    if (!$user_id) {
+        wp_send_json_success([
+            'affiliate_url' => $base_url ?: get_permalink($post_id),
+            'has_affiliate' => false,
+            'message' => 'No user logged in'
+        ]);
+        return;
+    }
+
+    if (!$post_id) {
+        wp_send_json_error('Invalid post ID');
+        return;
+    }
+
+    // Use AffiliateService to generate URL
+    try {
+        $khm_plugin_path = WP_PLUGIN_DIR . '/khm-plugin/src/Services/AffiliateService.php';
+        
+        if (file_exists($khm_plugin_path)) {
+            require_once $khm_plugin_path;
+            
+            $affiliate_service = new \KHM\Services\AffiliateService();
+            $url_to_use = $base_url ?: get_permalink($post_id);
+            $affiliate_url = $affiliate_service->generate_affiliate_url($user_id, $url_to_use, $post_id);
+            
+            wp_send_json_success([
+                'affiliate_url' => $affiliate_url,
+                'has_affiliate' => true,
+                'member_id' => $user_id
+            ]);
+        } else {
+            // Fallback if affiliate service is not available
+            wp_send_json_success([
+                'affiliate_url' => $base_url ?: get_permalink($post_id),
+                'has_affiliate' => false,
+                'message' => 'Affiliate service not available'
+            ]);
+        }
+    } catch (Exception $e) {
+        // Fallback to regular URL if affiliate generation fails
+        wp_send_json_success([
+            'affiliate_url' => $base_url ?: get_permalink($post_id),
+            'has_affiliate' => false,
+            'error' => $e->getMessage()
+        ]);
+    }
+}

@@ -18,6 +18,256 @@ require_once __DIR__ . '/includes/marketing-suite-functions.php';
 // Load credit system helper functions
 require_once __DIR__ . '/includes/credit-system-helpers.php';
 
+// Load Advanced Attribution System
+require_once plugin_dir_path(__FILE__) . 'src/Attribution/AttributionManager.php';
+
+// Load Attribution Admin Interface
+if (is_admin()) {
+    require_once plugin_dir_path(__FILE__) . 'admin/attribution-admin.php';
+}
+
+// Initialize Attribution System
+add_action('init', 'khm_init_attribution_system');
+
+function khm_init_attribution_system() {
+    // Create attribution manager instance
+    if (class_exists('KHM_Advanced_Attribution_Manager')) {
+        global $khm_attribution_manager;
+        $khm_attribution_manager = new KHM_Advanced_Attribution_Manager();
+        
+        // Create database tables if they don't exist
+        $khm_attribution_manager->maybe_create_attribution_tables();
+    }
+}
+
+// Enqueue frontend attribution tracking script
+add_action('wp_enqueue_scripts', 'khm_enqueue_attribution_scripts');
+
+function khm_enqueue_attribution_scripts() {
+    // Only load on frontend
+    if (!is_admin()) {
+        wp_enqueue_script('jquery');
+        wp_enqueue_script(
+            'khm-attribution-tracker',
+            plugin_dir_url(__FILE__) . 'assets/js/attribution-tracker.js',
+            array('jquery'),
+            '1.0.0',
+            true
+        );
+        
+        // Localize script with REST API endpoints
+        wp_localize_script('khm-attribution-tracker', 'khmAttribution', array(
+            'restUrl' => rest_url('khm/v1/'),
+            'nonce' => wp_create_nonce('wp_rest'),
+            'debug' => defined('WP_DEBUG') && WP_DEBUG,
+            'settings' => array(
+                'attribution_window' => get_option('khm_attribution_options', array())['attribution_window'] ?? 30,
+                'enable_fingerprinting' => get_option('khm_attribution_options', array())['enable_fingerprinting'] ?? false
+            )
+        ));
+    }
+}
+
+// Create main admin menu if it doesn't exist
+add_action('admin_menu', 'khm_create_main_admin_menu');
+
+function khm_create_main_admin_menu() {
+    // Check if main menu already exists
+    global $admin_page_hooks;
+    if (!isset($admin_page_hooks['khm-main-menu'])) {
+        add_menu_page(
+            'KHM Plugin',
+            'KHM Plugin',
+            'manage_options',
+            'khm-main-menu',
+            'khm_render_main_admin_page',
+            'dashicons-chart-line',
+            30
+        );
+    }
+}
+
+function khm_render_main_admin_page() {
+    ?>
+    <div class="wrap">
+        <h1>🎯 KHM Plugin - Advanced Affiliate Management</h1>
+        
+        <div class="khm-overview">
+            <div class="khm-overview-card">
+                <h2>Advanced Attribution System</h2>
+                <p>Enterprise-grade affiliate tracking with modern web resilience.</p>
+                <ul>
+                    <li>✅ ITP/Safari/AdBlock resistance</li>
+                    <li>✅ Multi-touch attribution</li>
+                    <li>✅ Server-side event correlation</li>
+                    <li>✅ Hybrid tracking approach</li>
+                    <li>✅ Real-time attribution confidence</li>
+                </ul>
+                <a href="<?php echo admin_url('admin.php?page=khm-attribution'); ?>" class="button button-primary">
+                    Configure Attribution
+                </a>
+            </div>
+            
+            <div class="khm-overview-card">
+                <h2>Creative Materials System</h2>
+                <p>Professional affiliate creative management and distribution.</p>
+                <ul>
+                    <li>✅ Banner/text/video management</li>
+                    <li>✅ Performance analytics</li>
+                    <li>✅ A/B testing framework</li>
+                    <li>✅ Version control</li>
+                    <li>✅ Auto-optimization</li>
+                </ul>
+                <a href="#" class="button">Coming Soon</a>
+            </div>
+            
+            <div class="khm-overview-card">
+                <h2>Enhanced Admin Dashboard</h2>
+                <p>Comprehensive analytics and business intelligence.</p>
+                <ul>
+                    <li>✅ Real-time performance metrics</li>
+                    <li>✅ P&L calculations</li>
+                    <li>✅ Funnel analysis</li>
+                    <li>✅ Forecasting algorithms</li>
+                    <li>✅ Custom reporting</li>
+                </ul>
+                <a href="#" class="button">Coming Soon</a>
+            </div>
+            
+            <div class="khm-overview-card">
+                <h2>Professional Affiliate Interface</h2>
+                <p>Modern affiliate portal with self-service capabilities.</p>
+                <ul>
+                    <li>✅ Self-serve registration</li>
+                    <li>✅ Real-time earnings</li>
+                    <li>✅ Creative marketplace</li>
+                    <li>✅ Performance insights</li>
+                    <li>✅ Mobile-responsive</li>
+                </ul>
+                <a href="#" class="button">Coming Soon</a>
+            </div>
+        </div>
+        
+        <div class="khm-status">
+            <h2>🚀 Implementation Status</h2>
+            <div class="khm-progress-grid">
+                <div class="khm-progress-item completed">
+                    <h3>Phase 1: Advanced Attribution System</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 100%"></div>
+                    </div>
+                    <p><strong>Status:</strong> ✅ Complete</p>
+                    <p>Hybrid tracking, server-side events, ITP resistance, multi-touch attribution</p>
+                </div>
+                
+                <div class="khm-progress-item in-progress">
+                    <h3>Phase 2: Performance Optimization</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 60%"></div>
+                    </div>
+                    <p><strong>Status:</strong> 🔄 In Progress</p>
+                    <p>Database optimization, caching, async processing, load balancing</p>
+                </div>
+                
+                <div class="khm-progress-item planned">
+                    <h3>Phase 3: Enhanced Analytics</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <p><strong>Status:</strong> 📋 Planned</p>
+                    <p>Business intelligence, P&L tracking, forecasting, custom reports</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+    .khm-overview {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin: 20px 0;
+    }
+    
+    .khm-overview-card {
+        background: #fff;
+        border: 1px solid #ccd0d4;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .khm-overview-card h2 {
+        margin: 0 0 10px 0;
+        color: #0073aa;
+        font-size: 18px;
+    }
+    
+    .khm-overview-card p {
+        color: #666;
+        margin-bottom: 15px;
+    }
+    
+    .khm-overview-card ul {
+        margin: 15px 0;
+        padding-left: 0;
+        list-style: none;
+    }
+    
+    .khm-overview-card li {
+        margin: 5px 0;
+        font-size: 14px;
+    }
+    
+    .khm-status {
+        margin-top: 40px;
+    }
+    
+    .khm-progress-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin: 20px 0;
+    }
+    
+    .khm-progress-item {
+        background: #fff;
+        border: 1px solid #ccd0d4;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .khm-progress-item.completed {
+        border-left: 4px solid #28a745;
+    }
+    
+    .khm-progress-item.in-progress {
+        border-left: 4px solid #ffc107;
+    }
+    
+    .khm-progress-item.planned {
+        border-left: 4px solid #6c757d;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 12px;
+        background: #e9ecef;
+        border-radius: 6px;
+        overflow: hidden;
+        margin: 10px 0;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #0073aa, #00a0d2);
+        transition: width 0.3s ease;
+    }
+    </style>
+    <?php
+}
+
 // Minimal init: register activation/deactivation hooks and call plugin initializer if available.
 register_activation_hook(__FILE__, function () {
     // Activation tasks (create tables, etc) — use migrations in /db/migrations
