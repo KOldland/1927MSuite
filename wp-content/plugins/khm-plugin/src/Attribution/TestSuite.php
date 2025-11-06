@@ -740,10 +740,7 @@ class KHM_Attribution_Test_Suite {
     private function suggest_reliability_improvements($results) { return array('add_retry_logic', 'improve_error_handling'); }
     private function suggest_security_improvements($results) { return array('enhance_authentication', 'audit_permissions'); }
     
-    // Initialize other test categories (simplified)
-    private function init_rest_api_tests() { return array(); }
-    private function init_graphql_api_tests() { return array(); }
-    private function init_authentication_tests() { return array(); }
+    // Initialize missing test category methods
     private function init_rate_limiting_tests() { return array(); }
     private function init_webhook_tests() { return array(); }
     private function init_developer_portal_tests() { return array(); }

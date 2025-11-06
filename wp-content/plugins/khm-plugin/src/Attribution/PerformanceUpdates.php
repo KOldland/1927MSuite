@@ -10,37 +10,107 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Mock WordPress functions if not available (for testing/linting)
+if (!function_exists('human_time_diff')) {
+    function human_time_diff($from, $to = 0) {
+        if (empty($to)) {
+            $to = time();
+        }
+        $diff = abs($to - $from);
+        
+        if ($diff < HOUR_IN_SECONDS) {
+            return sprintf('%d minutes', ceil($diff / MINUTE_IN_SECONDS));
+        } elseif ($diff < DAY_IN_SECONDS) {
+            return sprintf('%d hours', ceil($diff / HOUR_IN_SECONDS));
+        } else {
+            return sprintf('%d days', ceil($diff / DAY_IN_SECONDS));
+        }
+    }
+}
+
+if (!defined('HOUR_IN_SECONDS')) define('HOUR_IN_SECONDS', 3600);
+if (!defined('MINUTE_IN_SECONDS')) define('MINUTE_IN_SECONDS', 60);
+if (!defined('DAY_IN_SECONDS')) define('DAY_IN_SECONDS', 86400);
+
 /**
  * Performance-optimized methods for the KHM_Advanced_Attribution_Manager class
  */
 class KHM_Attribution_Performance_Updates {
     
+    private $performance_manager;
+    private $async_manager;
+    private $query_builder;
+    private $batch_queue = array();
+    private $optimization_config = array();
+    
+    /**
+     * Constructor - Initialize performance components
+     */
+    public function __construct() {
+        $this->init_performance_components();
+        $this->setup_optimization_config();
+        $this->register_performance_hooks();
+    }
+    
     /**
      * Initialize performance components
-     * Add this to the constructor of KHM_Advanced_Attribution_Manager
      */
-    public static function init_performance_components($manager) {
+    private function init_performance_components() {
         // Load performance manager
         require_once dirname(__FILE__) . '/PerformanceManager.php';
-        $manager->performance_manager = new KHM_Attribution_Performance_Manager();
+        $this->performance_manager = new KHM_Attribution_Performance_Manager();
         
         // Load async manager
         require_once dirname(__FILE__) . '/AsyncManager.php';
-        $manager->async_manager = new KHM_Attribution_Async_Manager();
+        $this->async_manager = new KHM_Attribution_Async_Manager();
         
         // Load query builder
         require_once dirname(__FILE__) . '/QueryBuilder.php';
-        $manager->query_builder = new KHM_Attribution_Query_Builder();
+        $this->query_builder = new KHM_Attribution_Query_Builder();
+    }
+    
+    /**
+     * Setup optimization configuration
+     */
+    private function setup_optimization_config() {
+        $this->optimization_config = array(
+            'batch_size' => 100,
+            'cache_ttl' => 3600,
+            'enable_async' => true,
+            'performance_logging' => true,
+            'memory_limit' => '256M',
+            'execution_time_limit' => 60
+        );
+    }
+    
+    /**
+     * Register performance optimization hooks
+     */
+    private function register_performance_hooks() {
+        add_action('khm_attribution_batch_process', array($this, 'process_batch_queue'));
+        add_action('khm_attribution_cleanup', array($this, 'cleanup_performance_data'));
+        add_filter('khm_attribution_query_optimization', array($this, 'optimize_attribution_query'), 10, 2);
+    }
+    
+    /**
+     * Initialize performance components for external manager
+     * Backward compatibility method
+     */
+    public function init_performance_components_for_manager($manager) {
+        $manager->performance_manager = $this->performance_manager;
+        $manager->async_manager = $this->async_manager;
+        $manager->query_builder = $this->query_builder;
+        return $manager;
     }
     
     /**
      * Optimized attribution event storage
-     * Replace store_attribution_event method
+     * Instance method version
      */
-    public static function store_attribution_event_optimized($manager, $attribution_data) {
+    public function store_attribution_event_optimized($attribution_data) {
         // Queue for batch processing if high volume
-        if (self::should_use_batch_processing($attribution_data)) {
-            return $manager->performance_manager->queue_attribution_event($attribution_data);
+        if ($this->should_use_batch_processing($attribution_data)) {
+            return $this->performance_manager->queue_attribution_event($attribution_data);
         }
         
         // Store immediately for high-priority events
@@ -86,13 +156,13 @@ class KHM_Attribution_Performance_Updates {
     
     /**
      * Optimized conversion attribution resolution
-     * Replace resolve_conversion_attribution method
+     * Instance method version
      */
-    public static function resolve_conversion_attribution_optimized($manager, $conversion_id, $additional_data = array()) {
+    public function resolve_conversion_attribution_optimized($conversion_id, $additional_data = array()) {
         // Use cached attribution lookup first
-        if (isset($manager->performance_manager)) {
+        if (isset($this->performance_manager)) {
             $cache_key = 'conversion_attribution_' . $conversion_id;
-            $cached_attribution = $manager->performance_manager->get_cache($cache_key);
+            $cached_attribution = $this->performance_manager->get_cache($cache_key);
             
             if ($cached_attribution !== false) {
                 return $cached_attribution;
@@ -103,17 +173,17 @@ class KHM_Attribution_Performance_Updates {
         $session_id = session_id();
         $user_id = get_current_user_id();
         
-        if (isset($manager->query_builder)) {
-            $attribution_events = $manager->query_builder->get_attribution_events(array(
+        if (isset($this->query_builder)) {
+            $attribution_events = $this->query_builder->get_attribution_events(array(
                 'session_id' => $session_id,
                 'user_id' => $user_id,
-                'date_from' => date('Y-m-d H:i:s', strtotime('-' . $manager->attribution_window . ' days')),
+                'date_from' => date('Y-m-d H:i:s', strtotime('-30 days')), // Default 30 day window
                 'limit' => 50,
                 'order_by' => 'created_at DESC'
             ));
         } else {
             // Fallback to original method
-            $attribution_events = self::get_attribution_events_fallback($session_id, $user_id, $manager->attribution_window);
+            $attribution_events = $this->get_attribution_events_fallback($session_id, $user_id, 30); // Default 30 day window
         }
         
         if (empty($attribution_events)) {
@@ -169,60 +239,53 @@ class KHM_Attribution_Performance_Updates {
     
     /**
      * Optimized conversion storage with attribution
-     * Replace store_conversion_with_attribution method
+     * Instance method version
      */
-    public static function store_conversion_with_attribution_optimized($manager, $conversion_data) {
-        global $wpdb;
-        
-        $table_conversions = $wpdb->prefix . 'khm_conversion_tracking';
-        
-        $attribution = $conversion_data['attribution'] ?? null;
-        
-        $result = $wpdb->insert(
-            $table_conversions,
-            array(
-                'order_id' => $conversion_data['conversion_id'],
-                'click_id' => $attribution['click_id'] ?? null,
-                'affiliate_id' => $attribution['affiliate_id'] ?? null,
-                'order_value' => $conversion_data['value'],
-                'commission_amount' => $conversion_data['commission']['amount'] ?? 0,
-                'commission_rate' => $conversion_data['commission']['rate'] ?? 0,
-                'attribution_method' => $attribution['method'] ?? null,
-                'attribution_confidence' => $attribution['confidence'] ?? null,
-                'attribution_explanation' => $attribution['attribution_explanation'] ?? null,
-                'multi_touch_data' => json_encode($attribution['multi_touch'] ?? array()),
-                'created_at' => $conversion_data['timestamp'],
-                'status' => $attribution ? 'attributed' : 'pending'
-            ),
-            array('%s', '%s', '%d', '%f', '%f', '%f', '%s', '%f', '%s', '%s', '%s', '%s')
-        );
-        
-        // Clear relevant caches
-        if (isset($manager->performance_manager)) {
-            $affiliate_id = $attribution['affiliate_id'] ?? null;
-            if ($affiliate_id) {
-                $manager->performance_manager->delete_cache('affiliate_performance_' . $affiliate_id);
+    public function store_conversion_with_attribution_optimized($conversion_data) {
+        try {
+            // Build optimized query using instance query builder
+            if (isset($this->query_builder)) {
+                $query = $this->query_builder->build_insert_query(
+                    'conversion_attributions',
+                    $conversion_data,
+                    array('%s', '%d', '%s', '%f', '%s', '%s')
+                );
+                
+                // Execute with performance tracking
+                if (isset($this->performance_manager)) {
+                    return $this->performance_manager->execute_tracked_query($query);
+                }
             }
+            
+            // Fallback to direct database insert
+            global $wpdb;
+            $table_conversions = $wpdb->prefix . 'khm_conversion_tracking';
+            
+            return $wpdb->insert(
+                $table_conversions,
+                array(
+                    'conversion_id' => $conversion_data['conversion_id'],
+                    'affiliate_id' => $conversion_data['attribution']['affiliate_id'] ?? 0,
+                    'value' => $conversion_data['value'],
+                    'currency' => $conversion_data['currency'] ?? 'USD',
+                    'status' => 'attributed',
+                    'attribution_method' => $conversion_data['attribution']['method'] ?? 'unknown',
+                    'created_at' => current_time('mysql')
+                ),
+                array('%s', '%d', '%f', '%s', '%s', '%s', '%s')
+            );
+            
+        } catch (Exception $e) {
+            error_log('KHM Attribution: Store conversion error - ' . $e->getMessage());
+            return false;
         }
-        
-        // Queue analytics aggregation
-        if (isset($manager->async_manager)) {
-            $manager->async_manager->queue_job('analytics_aggregation', array(
-                'date_range' => array(
-                    'start' => date('Y-m-d'),
-                    'end' => date('Y-m-d')
-                )
-            ), 5); // Low priority
-        }
-        
-        return $wpdb->insert_id;
     }
     
     /**
      * Optimized attribution lookup with multi-level caching
-     * Replace get_conversion_attribution method  
+     * Instance method version  
      */
-    public static function get_conversion_attribution_optimized($manager, $conversion_id) {
+    public function get_conversion_attribution_optimized($conversion_id) {
         // Try memory cache first
         static $memory_cache = array();
         if (isset($memory_cache[$conversion_id])) {
@@ -230,9 +293,9 @@ class KHM_Attribution_Performance_Updates {
         }
         
         // Try persistent cache
-        if (isset($manager->performance_manager)) {
+        if (isset($this->performance_manager)) {
             $cache_key = 'conversion_lookup_' . $conversion_id;
-            $cached_result = $manager->performance_manager->get_cache($cache_key);
+            $cached_result = $this->performance_manager->get_cache($cache_key);
             
             if ($cached_result !== false) {
                 $memory_cache[$conversion_id] = $cached_result;
@@ -259,9 +322,9 @@ class KHM_Attribution_Performance_Updates {
         if ($result) {
             $memory_cache[$conversion_id] = $result;
             
-            if (isset($manager->performance_manager)) {
+            if (isset($this->performance_manager)) {
                 $cache_key = 'conversion_lookup_' . $conversion_id;
-                $manager->performance_manager->set_cache($cache_key, $result, 7200); // 2 hour cache
+                $this->performance_manager->set_cache($cache_key, $result, 7200); // 2 hour cache
             }
         }
         
@@ -364,8 +427,9 @@ class KHM_Attribution_Performance_Updates {
     
     /**
      * Create missing database tables if needed
+     * Instance method version
      */
-    public static function maybe_create_attribution_tables() {
+    public function maybe_create_attribution_tables() {
         global $wpdb;
         
         $charset_collate = $wpdb->get_charset_collate();
@@ -393,11 +457,28 @@ class KHM_Attribution_Performance_Updates {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql);
     }
+    
+    /**
+     * Static method to initialize performance components for external manager
+     */
+    public static function init_performance_for_manager($manager) {
+        $performance_updates = new self();
+        $performance_updates->init_performance_components_for_manager($manager);
+        return $performance_updates;
+    }
+    
+    /**
+     * Static helper for creating tables during plugin activation
+     */
+    public static function create_attribution_tables() {
+        $performance_updates = new self();
+        $performance_updates->maybe_create_attribution_tables();
+    }
 }
 
 // Hook to initialize performance updates when the main class is loaded
 add_action('khm_attribution_manager_loaded', function($manager) {
-    KHM_Attribution_Performance_Updates::init_performance_components($manager);
-    KHM_Attribution_Performance_Updates::maybe_create_attribution_tables();
+    KHM_Attribution_Performance_Updates::init_performance_for_manager($manager);
+    KHM_Attribution_Performance_Updates::create_attribution_tables();
 });
 ?>
