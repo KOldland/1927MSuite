@@ -1,0 +1,1 @@
+<?php // Mock WordPress upgrade file for testing
