@@ -7,14 +7,26 @@
  * @version 1.0.0
  */
 
-// Ensure WordPress constants are available
-if (!defined('DB_HOST')) {
-    require_once(ABSPATH . 'wp-config.php');
-}
-
 namespace KHM\Utils;
 
 use KHM\Services\Migration;
+
+// Ensure WordPress constants are available (after namespace)
+if (!defined('ABSPATH')) {
+    // Try to find WordPress root
+    $wp_root_paths = [
+        dirname(__DIR__, 5) . '/wp-config.php',
+        dirname(__DIR__, 4) . '/wp-config.php',
+        dirname(__DIR__, 3) . '/wp-config.php'
+    ];
+    
+    foreach ($wp_root_paths as $path) {
+        if (file_exists($path)) {
+            require_once($path);
+            break;
+        }
+    }
+}
 
 class MigrationManager {
     

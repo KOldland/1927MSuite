@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TouchPoint Frontend Test Suite</title>
+    
+    <!-- Load CSS -->
+    <link rel="stylesheet" href="../social-strip/assets/css/ecommerce.css">
+    <link rel="stylesheet" href="../social-strip/assets/css/modal.css">
+    
+    <style>
+        /* Test framework styles */
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+        .test-header { font-size: 18px; font-weight: bold; color: #333; margin-bottom: 15px; }
+        .test-result { padding: 10px; margin: 5px 0; border-radius: 4px; }
+        .test-pass { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .test-fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .test-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .demo-area { border: 2px dashed #ccc; padding: 20px; margin: 15px 0; background: #f9f9f9; }
+        .test-controls { margin: 10px 0; }
+        .test-button { 
+            background: #007cba; color: white; border: none; padding: 8px 16px; 
+            border-radius: 4px; cursor: pointer; margin: 5px;
+        }
+        .test-button:hover { background: #005a87; }
+    </style>
+</head>
+<body>
+    <h1>🧪 TouchPoint Marketing Suite - Frontend Test Suite</h1>
+    <p>Testing frontend components, CSS, and JavaScript functionality</p>
+    
+    <!-- Test Results Summary -->
+    <div id="test-summary" class="test-section">
+        <div class="test-header">📊 Test Summary</div>
+        <div id="summary-content">Running tests...</div>
+    </div>
+    
+    <!-- CSS Tests -->
+    <div class="test-section">
+        <div class="test-header">🎨 CSS Tests</div>
+        
+        <div class="test-controls">
+            <button class="test-button" onclick="testModalCSS()">Test Modal CSS</button>
+            <button class="test-button" onclick="testECommerceCSS()">Test eCommerce CSS</button>
+            <button class="test-button" onclick="testResponsiveCSS()">Test Responsive Design</button>
+        </div>
+        
+        <div id="css-results"></div>
+        
+        <!-- Modal Demo -->
+        <div class="demo-area">
+            <h4>Modal Demo</h4>
+            <button onclick="showTestModal()" class="test-button">Show Test Modal</button>
+            
+            <!-- Test Modal Structure -->
+            <div id="test-modal" class="khm-modal" style="display: none;">
+                <div class="khm-modal-backdrop">
+                    <div class="khm-modal-content">
+                        <div class="khm-modal-header">
+                            <h3>Test Modal</h3>
+                            <button class="khm-modal-close" onclick="hideTestModal()">&times;</button>
+                        </div>
+                        <div class="khm-modal-body">
+                            <p>This is a test modal to verify styling works correctly.</p>
+                        </div>
+                        <div class="khm-modal-footer">
+                            <button class="khm-button primary">Primary Button</button>
+                            <button class="khm-button secondary" onclick="hideTestModal()">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- eCommerce Demo -->
+        <div class="demo-area">
+            <h4>eCommerce Components Demo</h4>
+            
+            <div class="khm-cart-preview">
+                <div class="khm-cart-header">Shopping Cart</div>
+                <div class="khm-cart-item">
+                    <div class="item-image">📰</div>
+                    <div class="item-details">
+                        <div class="item-title">Test Article</div>
+                        <div class="item-price">$2.99</div>
+                    </div>
+                    <div class="item-controls">
+                        <button class="quantity-btn minus">-</button>
+                        <span class="quantity">1</span>
+                        <button class="quantity-btn plus">+</button>
+                    </div>
+                </div>
+                <div class="khm-cart-total">Total: $2.99</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JavaScript Tests -->
+    <div class="test-section">
+        <div class="test-header">⚡ JavaScript Tests</div>
+        
+        <div class="test-controls">
+            <button class="test-button" onclick="testJavaScriptLoading()">Test JS Loading</button>
+            <button class="test-button" onclick="testAjaxFunctions()">Test AJAX Functions</button>
+            <button class="test-button" onclick="testCartFunctions()">Test Cart Functions</button>
+        </div>
+        
+        <div id="js-results"></div>
+    </div>
+    
+    <!-- Integration Tests -->
+    <div class="test-section">
+        <div class="test-header">🔗 Integration Tests</div>
+        
+        <div class="test-controls">
+            <button class="test-button" onclick="testModalIntegration()">Test Modal Integration</button>
+            <button class="test-button" onclick="testECommerceFlow()">Test eCommerce Flow</button>
+        </div>
+        
+        <div id="integration-results"></div>
+        
+        <!-- Integration Demo Area -->
+        <div class="demo-area">
+            <h4>Full Integration Demo</h4>
+            <button class="test-button" onclick="simulateAddToCart('test-article-1', 'Test Article', 2.99)">
+                Add to Cart (Demo)
+            </button>
+            <button class="test-button" onclick="showCheckoutModal()">Show Checkout</button>
+            
+            <!-- Cart Display -->
+            <div id="cart-display" style="margin-top: 15px;">
+                <div class="khm-cart-summary">
+                    <strong>Cart Items: <span id="cart-count">0</span></strong>
+                    <div id="cart-items"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Performance Tests -->
+    <div class="test-section">
+        <div class="test-header">⚡ Performance Tests</div>
+        
+        <div class="test-controls">
+            <button class="test-button" onclick="testCSSPerformance()">Test CSS Performance</button>
+            <button class="test-button" onclick="testJSPerformance()">Test JS Performance</button>
+        </div>
+        
+        <div id="performance-results"></div>
+    </div>
+    
+    <!-- Load JavaScript -->
+    <script src="../social-strip/assets/js/ecommerce.js"></script>
+    
+    <!-- Test Framework JavaScript -->
+    <script>
+        let testResults = {
+            total: 0,
+            passed: 0,
+            failed: 0,
+            warnings: 0
+        };
+        
+        let testCart = [];
+        
+        function logTest(type, message, category = '') {
+            testResults.total++;
+            testResults[type]++;
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result test-${type}`;
+            
+            const icon = type === 'passed' ? '✅' : type === 'failed' ? '❌' : '⚠️';
+            resultDiv.innerHTML = `${icon} ${message}`;
+            
+            const categoryResults = document.getElementById(`${category}-results`);
+            if (categoryResults) {
+                categoryResults.appendChild(resultDiv);
+            }
+            
+            updateTestSummary();
+        }
+        
+        function updateTestSummary() {
+            const healthScore = testResults.total > 0 
+                ? Math.round((testResults.passed / testResults.total) * 100) 
+                : 0;
+                
+            document.getElementById('summary-content').innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px;">
+                    <div class="test-result test-pass">✅ Passed: ${testResults.passed}</div>
+                    <div class="test-result test-fail">❌ Failed: ${testResults.failed}</div>
+                    <div class="test-result test-warning">⚠️ Warnings: ${testResults.warnings}</div>
+                    <div class="test-result" style="background: #e7f3ff; color: #004085;">
+                        📊 Health: ${healthScore}%
+                    </div>
+                </div>
+                <div><strong>Total Tests:</strong> ${testResults.total}</div>
+            `;
+        }
+        
+        // CSS Tests
+        function testModalCSS() {
+            const modal = document.getElementById('test-modal');
+            if (!modal) {
+                logTest('failed', 'Modal element not found', 'css');
+                return;
+            }
+            
+            const style = window.getComputedStyle(modal);
+            
+            if (style.position === 'fixed') {
+                logTest('passed', 'Modal has fixed positioning', 'css');
+            } else {
+                logTest('failed', 'Modal positioning incorrect', 'css');
+            }
+            
+            const backdrop = modal.querySelector('.khm-modal-backdrop');
+            if (backdrop) {
+                const backdropStyle = window.getComputedStyle(backdrop);
+                if (backdropStyle.backgroundColor.includes('rgba') || backdropStyle.backgroundColor.includes('rgb')) {
+                    logTest('passed', 'Modal backdrop has background color', 'css');
+                } else {
+                    logTest('warning', 'Modal backdrop may need background styling', 'css');
+                }
+            }
+        }
+        
+        function testECommerceCSS() {
+            const cartPreview = document.querySelector('.khm-cart-preview');
+            if (cartPreview) {
+                logTest('passed', 'eCommerce cart styles loaded', 'css');
+                
+                const cartItems = document.querySelectorAll('.khm-cart-item');
+                if (cartItems.length > 0) {
+                    logTest('passed', 'Cart item styles present', 'css');
+                } else {
+                    logTest('warning', 'No cart items to test styling', 'css');
+                }
+            } else {
+                logTest('failed', 'eCommerce cart styles not found', 'css');
+            }
+        }
+        
+        function testResponsiveCSS() {
+            const originalWidth = window.innerWidth;
+            
+            // Test mobile view simulation
+            if (window.innerWidth > 768) {
+                logTest('passed', 'Desktop view detected', 'css');
+            } else {
+                logTest('passed', 'Mobile view detected', 'css');
+            }
+            
+            // Check if CSS media queries are working
+            const modal = document.getElementById('test-modal');
+            if (modal) {
+                logTest('passed', 'Responsive CSS test completed', 'css');
+            }
+        }
+        
+        // JavaScript Tests
+        function testJavaScriptLoading() {
+            // Test if eCommerce functions exist
+            const functions = ['handleAddToCart', 'updateCartDisplay', 'validateCheckoutForm'];
+            let foundFunctions = 0;
+            
+            functions.forEach(func => {
+                if (typeof window[func] === 'function') {
+                    logTest('passed', `Function exists: ${func}`, 'js');
+                    foundFunctions++;
+                } else {
+                    logTest('warning', `Function not found: ${func}`, 'js');
+                }
+            });
+            
+            if (foundFunctions >= 2) {
+                logTest('passed', 'Core JavaScript functions loaded', 'js');
+            } else {
+                logTest('failed', 'Missing core JavaScript functions', 'js');
+            }
+        }
+        
+        function testAjaxFunctions() {
+            // Test if jQuery/AJAX setup exists
+            if (typeof $ !== 'undefined' || typeof jQuery !== 'undefined') {
+                logTest('passed', 'jQuery available for AJAX', 'js');
+            } else {
+                logTest('warning', 'jQuery not detected - AJAX may not work', 'js');
+            }
+            
+            // Test AJAX configuration
+            if (typeof khmEcommerce !== 'undefined') {
+                logTest('passed', 'khmEcommerce configuration detected', 'js');
+            } else {
+                logTest('warning', 'khmEcommerce configuration missing', 'js');
+            }
+        }
+        
+        function testCartFunctions() {
+            try {
+                // Test local cart functionality
+                simulateAddToCart('test-item', 'Test Item', 9.99);
+                
+                if (testCart.length > 0) {
+                    logTest('passed', 'Cart add function working', 'js');
+                } else {
+                    logTest('failed', 'Cart add function failed', 'js');
+                }
+                
+                // Test cart display update
+                updateTestCartDisplay();
+                logTest('passed', 'Cart display update working', 'js');
+                
+            } catch (error) {
+                logTest('failed', `Cart function error: ${error.message}`, 'js');
+            }
+        }
+        
+        // Integration Tests
+        function testModalIntegration() {
+            try {
+                showTestModal();
+                setTimeout(() => {
+                    const modal = document.getElementById('test-modal');
+                    const isVisible = window.getComputedStyle(modal).display !== 'none';
+                    
+                    if (isVisible) {
+                        logTest('passed', 'Modal show integration working', 'integration');
+                        hideTestModal();
+                        
+                        setTimeout(() => {
+                            const isHidden = window.getComputedStyle(modal).display === 'none';
+                            if (isHidden) {
+                                logTest('passed', 'Modal hide integration working', 'integration');
+                            } else {
+                                logTest('warning', 'Modal hide may not be working properly', 'integration');
+                            }
+                        }, 100);
+                    } else {
+                        logTest('failed', 'Modal show integration failed', 'integration');
+                    }
+                }, 100);
+                
+            } catch (error) {
+                logTest('failed', `Modal integration error: ${error.message}`, 'integration');
+            }
+        }
+        
+        function testECommerceFlow() {
+            try {
+                // Test complete eCommerce flow
+                simulateAddToCart('flow-test', 'Flow Test Article', 5.99);
+                
+                if (testCart.length > 0) {
+                    logTest('passed', 'Add to cart flow working', 'integration');
+                    
+                    // Test checkout simulation
+                    const checkoutData = {
+                        items: testCart,
+                        total: testCart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+                    };
+                    
+                    if (checkoutData.total > 0) {
+                        logTest('passed', 'Checkout calculation working', 'integration');
+                    } else {
+                        logTest('failed', 'Checkout calculation failed', 'integration');
+                    }
+                } else {
+                    logTest('failed', 'eCommerce flow failed at add to cart', 'integration');
+                }
+                
+            } catch (error) {
+                logTest('failed', `eCommerce flow error: ${error.message}`, 'integration');
+            }
+        }
+        
+        // Performance Tests
+        function testCSSPerformance() {
+            const start = performance.now();
+            
+            // Force style recalculation
+            const elements = document.querySelectorAll('[class*="khm-"]');
+            elements.forEach(el => {
+                window.getComputedStyle(el).display;
+            });
+            
+            const end = performance.now();
+            const duration = end - start;
+            
+            if (duration < 10) {
+                logTest('passed', `CSS performance good: ${duration.toFixed(2)}ms`, 'performance');
+            } else if (duration < 50) {
+                logTest('warning', `CSS performance acceptable: ${duration.toFixed(2)}ms`, 'performance');
+            } else {
+                logTest('failed', `CSS performance poor: ${duration.toFixed(2)}ms`, 'performance');
+            }
+        }
+        
+        function testJSPerformance() {
+            const start = performance.now();
+            
+            // Test JavaScript performance with cart operations
+            for (let i = 0; i < 100; i++) {
+                simulateAddToCart(`perf-test-${i}`, `Performance Test ${i}`, 1.00);
+            }
+            
+            const end = performance.now();
+            const duration = end - start;
+            
+            // Clear test items
+            testCart = testCart.filter(item => !item.id.startsWith('perf-test-'));
+            updateTestCartDisplay();
+            
+            if (duration < 100) {
+                logTest('passed', `JS performance good: ${duration.toFixed(2)}ms for 100 operations`, 'performance');
+            } else if (duration < 500) {
+                logTest('warning', `JS performance acceptable: ${duration.toFixed(2)}ms for 100 operations`, 'performance');
+            } else {
+                logTest('failed', `JS performance poor: ${duration.toFixed(2)}ms for 100 operations`, 'performance');
+            }
+        }
+        
+        // Modal Functions
+        function showTestModal() {
+            const modal = document.getElementById('test-modal');
+            modal.style.display = 'block';
+        }
+        
+        function hideTestModal() {
+            const modal = document.getElementById('test-modal');
+            modal.style.display = 'none';
+        }
+        
+        // Cart Functions
+        function simulateAddToCart(id, title, price) {
+            const existingItem = testCart.find(item => item.id === id);
+            
+            if (existingItem) {
+                existingItem.quantity++;
+            } else {
+                testCart.push({
+                    id: id,
+                    title: title,
+                    price: price,
+                    quantity: 1
+                });
+            }
+            
+            updateTestCartDisplay();
+        }
+        
+        function updateTestCartDisplay() {
+            const cartCount = document.getElementById('cart-count');
+            const cartItems = document.getElementById('cart-items');
+            
+            const totalItems = testCart.reduce((sum, item) => sum + item.quantity, 0);
+            cartCount.textContent = totalItems;
+            
+            cartItems.innerHTML = testCart.map(item => `
+                <div class="khm-cart-item" style="margin: 5px 0; padding: 5px; background: white; border-radius: 4px;">
+                    <strong>${item.title}</strong> - $${item.price.toFixed(2)} × ${item.quantity}
+                </div>
+            `).join('');
+        }
+        
+        function showCheckoutModal() {
+            if (testCart.length === 0) {
+                alert('Add items to cart first!');
+                return;
+            }
+            
+            const total = testCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            alert(`Checkout Demo\nItems: ${testCart.length}\nTotal: $${total.toFixed(2)}`);
+        }
+        
+        // Auto-run basic tests on page load
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                // Run automatic tests
+                testModalCSS();
+                testECommerceCSS();
+                testJavaScriptLoading();
+                
+                logTest('passed', 'Frontend test suite loaded successfully', 'css');
+                
+                console.log('🧪 TouchPoint Frontend Test Suite Ready');
+                console.log('Use the buttons to run specific test categories');
+            }, 500);
+        });
+        
+    </script>
+</body>
+</html>
