@@ -19,6 +19,7 @@ use KHM_SEO\Sitemap\SitemapManager;
 use KHM_SEO\Admin\AdminManager;
 use KHM_SEO\Tools\ToolsManager;
 use KHM_SEO\Utils\DatabaseManager;
+use KHM_SEO\Analysis\AnalysisEngine;
 
 /**
  * Main plugin class.
@@ -82,6 +83,13 @@ final class Plugin {
     public $database = null;
 
     /**
+     * Analysis engine instance.
+     *
+     * @var AnalysisEngine|null
+     */
+    public $analysis = null;
+
+    /**
      * Get plugin instance.
      *
      * @return Plugin
@@ -111,8 +119,10 @@ final class Plugin {
         // Initialize core components
         add_action( 'init', array( $this, 'init_components' ) );
         
-        // Initialize database
-        $this->database = new DatabaseManager();
+        // Initialize database only if not in testing mode
+        if ( ! defined( 'KHM_SEO_TESTING' ) || ! KHM_SEO_TESTING ) {
+            $this->database = new DatabaseManager();
+        }
         
         // Hook into WordPress
         add_action( 'wp_head', array( $this, 'output_head_tags' ), 1 );
@@ -141,6 +151,9 @@ final class Plugin {
         $this->sitemap = new SitemapManager();
         $this->admin = new AdminManager();
         $this->tools = new ToolsManager();
+        
+        // Initialize analysis engine with default configuration
+        $this->analysis = new AnalysisEngine( $this->get_analysis_config() );
     }
 
     /**
@@ -208,7 +221,38 @@ final class Plugin {
                null !== $this->schema && 
                null !== $this->sitemap && 
                null !== $this->admin && 
-               null !== $this->tools;
+               null !== $this->tools &&
+               null !== $this->analysis;
+    }
+
+    /**
+     * Get analysis engine configuration.
+     *
+     * @return array Analysis configuration
+     */
+    private function get_analysis_config() {
+        // Get options from WordPress or use defaults
+        $options = get_option( 'khm_seo_analysis', array() );
+        
+        return wp_parse_args( $options, array(
+            'keywords' => array(
+                'target_density_min' => 0.5,
+                'target_density_max' => 2.5,
+                'max_keyword_stuffing' => 3.0
+            ),
+            'readability' => array(
+                'max_sentence_length' => 20,
+                'max_paragraph_length' => 150,
+                'transition_word_threshold' => 30,
+                'passive_voice_threshold' => 10
+            ),
+            'content' => array(
+                'min_word_count' => 300,
+                'optimal_word_count' => 1000,
+                'power_word_density' => 1.0,
+                'min_cta_count' => 1
+            )
+        ) );
     }
 
     /**
@@ -254,5 +298,34 @@ final class Plugin {
      */
     public function get_tools_manager() {
         return $this->tools;
+    }
+
+    /**
+     * Get analysis engine instance.
+     *
+     * @return AnalysisEngine|null
+     */
+    public function get_analysis_engine() {
+        return $this->analysis;
+    }
+
+    /**
+     * Analyze content for SEO
+     *
+     * @param string $content Content to analyze
+     * @param string $keyword Target keyword
+     * @return array Analysis results
+     */
+    public function analyze_content( $content, $keyword = '' ) {
+        if ( ! $this->analysis ) {
+            return array(
+                'overall_score' => 0,
+                'suggestions' => array( 'Analysis engine not initialized' ),
+                'component_scores' => array(),
+                'error' => 'Analysis engine not available'
+            );
+        }
+
+        return $this->analysis->analyze( $content, $keyword );
     }
 }
