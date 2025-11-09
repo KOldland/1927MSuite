@@ -20,6 +20,7 @@ use KHM_SEO\Admin\AdminManager;
 use KHM_SEO\Tools\ToolsManager;
 use KHM_SEO\Utils\DatabaseManager;
 use KHM_SEO\Analysis\AnalysisEngine;
+use KHMSeo\Editor\EditorManager;
 
 /**
  * Main plugin class.
@@ -90,6 +91,13 @@ final class Plugin {
     public $analysis = null;
 
     /**
+     * Editor manager instance.
+     *
+     * @var EditorManager|null
+     */
+    public $editor = null;
+
+    /**
      * Get plugin instance.
      *
      * @return Plugin
@@ -154,6 +162,10 @@ final class Plugin {
         
         // Initialize analysis engine with default configuration
         $this->analysis = new AnalysisEngine( $this->get_analysis_config() );
+        
+        // Initialize editor manager for Phase 2
+        $this->editor = new EditorManager();
+        $this->editor->init();
     }
 
     /**
