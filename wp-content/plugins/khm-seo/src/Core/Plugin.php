@@ -15,6 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use KHM_SEO\Meta\MetaManager;
 use KHM_SEO\Schema\SchemaManager;
+use KHM_SEO\Schema\Admin\SchemaAdminManager;
 use KHM_SEO\Sitemap\SitemapManager;
 use KHM_SEO\Admin\AdminManager;
 use KHM_SEO\Tools\ToolsManager;
@@ -83,6 +84,13 @@ final class Plugin {
      * @var SocialMediaManager|null
      */
     public $social = null;
+
+    /**
+     * Schema admin manager instance.
+     *
+     * @var Schema\Admin\SchemaAdminManager|null
+     */
+    public $schema_admin = null;
 
     /**
      * Database manager instance.
@@ -170,6 +178,11 @@ final class Plugin {
         
         // Initialize Phase 3 social media manager
         $this->social = new SocialMediaManager();
+        
+        // Initialize Phase 4 schema admin interface
+        if ( is_admin() ) {
+            $this->schema_admin = new SchemaAdminManager();
+        }
         
         // Initialize analysis engine with default configuration
         $this->analysis = new AnalysisEngine( $this->get_analysis_config() );
