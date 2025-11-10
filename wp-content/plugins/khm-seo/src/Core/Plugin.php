@@ -18,6 +18,7 @@ use KHM_SEO\Schema\SchemaManager;
 use KHM_SEO\Sitemap\SitemapManager;
 use KHM_SEO\Admin\AdminManager;
 use KHM_SEO\Tools\ToolsManager;
+use KHM_SEO\Social\SocialMediaManager;
 use KHM_SEO\Utils\DatabaseManager;
 use KHM_SEO\Analysis\AnalysisEngine;
 use KHMSeo\Editor\EditorManager;
@@ -75,6 +76,13 @@ final class Plugin {
      * @var ToolsManager|null
      */
     public $tools = null;
+
+    /**
+     * Social media manager instance.
+     *
+     * @var SocialMediaManager|null
+     */
+    public $social = null;
 
     /**
      * Database manager instance.
@@ -159,6 +167,9 @@ final class Plugin {
         $this->sitemap = new SitemapManager();
         $this->admin = new AdminManager();
         $this->tools = new ToolsManager();
+        
+        // Initialize Phase 3 social media manager
+        $this->social = new SocialMediaManager();
         
         // Initialize analysis engine with default configuration
         $this->analysis = new AnalysisEngine( $this->get_analysis_config() );
