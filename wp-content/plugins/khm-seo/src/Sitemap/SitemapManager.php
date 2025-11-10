@@ -1,467 +1,537 @@
 <?php
 /**
- * Sitemap Manager for XML sitemaps.
- *
- * @package KHM_SEO
- * @version 1.0.0
+ * Sitemap Manager - Sitemap routing, caching, and search engine notifications
+ * 
+ * Manages sitemap requests, handles automatic regeneration,
+ * integrates with WordPress rewrite rules, and notifies search engines.
+ * 
+ * @package KHMSeo\Sitemap
+ * @since 2.1.0
  */
 
-namespace KHM_SEO\Sitemap;
-
-// Prevent direct access
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
+namespace KHMSeo\Sitemap;
 
 /**
- * Sitemap manager class.
+ * Sitemap Manager Class
  */
 class SitemapManager {
+    /**
+     * @var SitemapGenerator Sitemap generator instance
+     */
+    private $generator;
 
     /**
-     * Initialize the sitemap manager.
+     * @var array Configuration settings
      */
-    public function __construct() {
+    private $settings;
+
+    /**
+     * @var array Search engines to ping
+     */
+    private $search_engines;
+
+    /**
+     * Constructor
+     *
+     * @param SitemapGenerator $generator Sitemap generator
+     */
+    public function __construct(SitemapGenerator $generator) {
+        $this->generator = $generator;
+        $this->init_settings();
+        $this->init_search_engines();
         $this->init_hooks();
     }
 
     /**
-     * Initialize WordPress hooks.
+     * Initialize settings
+     */
+    private function init_settings() {
+        $this->settings = wp_parse_args(get_option('khm_seo_sitemap_settings', []), [
+            'enable_sitemap' => true,
+            'auto_regenerate' => true,
+            'ping_search_engines' => true,
+            'regenerate_on_post_save' => true,
+            'regenerate_on_term_save' => true,
+            'max_age' => 86400, // 24 hours
+            'gzip_compression' => true,
+            'cache_control' => true
+        ]);
+    }
+
+    /**
+     * Initialize search engines for pinging
+     */
+    private function init_search_engines() {
+        $this->search_engines = [
+            'google' => [
+                'name' => 'Google',
+                'ping_url' => 'https://www.google.com/ping?sitemap=',
+                'enabled' => true
+            ],
+            'bing' => [
+                'name' => 'Bing',
+                'ping_url' => 'https://www.bing.com/ping?sitemap=',
+                'enabled' => true
+            ],
+            'yandex' => [
+                'name' => 'Yandex',
+                'ping_url' => 'https://webmaster.yandex.com/ping?sitemap=',
+                'enabled' => false
+            ],
+            'baidu' => [
+                'name' => 'Baidu',
+                'ping_url' => 'https://ping.baidu.com/ping/RPC2',
+                'enabled' => false
+            ]
+        ];
+
+        // Apply user settings
+        $engine_settings = get_option('khm_seo_search_engine_settings', []);
+        foreach ($engine_settings as $engine => $enabled) {
+            if (isset($this->search_engines[$engine])) {
+                $this->search_engines[$engine]['enabled'] = $enabled;
+            }
+        }
+    }
+
+    /**
+     * Initialize WordPress hooks
      */
     private function init_hooks() {
-        add_action( 'init', array( $this, 'add_rewrite_rules' ) );
-        add_action( 'template_redirect', array( $this, 'handle_sitemap_request' ) );
-        add_action( 'khm_seo_generate_sitemap', array( $this, 'generate_sitemap' ) );
+        if (!$this->settings['enable_sitemap']) {
+            return;
+        }
+
+        // Rewrite rules
+        add_action('init', [$this, 'add_rewrite_rules'], 1);
+        add_filter('query_vars', [$this, 'add_query_vars']);
+        
+        // Template redirect
+        add_action('template_redirect', [$this, 'handle_sitemap_request'], 1);
+        
+        // Auto-regeneration hooks
+        if ($this->settings['auto_regenerate']) {
+            $this->init_regeneration_hooks();
+        }
+        
+        // Admin hooks
+        add_action('admin_init', [$this, 'maybe_flush_rewrite_rules']);
+        
+        // Cron hooks
+        add_action('khm_seo_regenerate_sitemap', [$this, 'regenerate_sitemap_background']);
+        add_action('khm_seo_ping_search_engines', [$this, 'ping_search_engines']);
     }
 
     /**
-     * Add rewrite rules for sitemap.
+     * Add sitemap rewrite rules
      */
     public function add_rewrite_rules() {
-        add_rewrite_rule( 'sitemap\.xml$', 'index.php?khm_sitemap=index', 'top' );
-        add_rewrite_rule( 'sitemap-([^/]+?)\.xml$', 'index.php?khm_sitemap=$matches[1]', 'top' );
+        // Main sitemap index
+        add_rewrite_rule(
+            '^sitemap\.xml$',
+            'index.php?khm_sitemap=index',
+            'top'
+        );
         
-        // Add query vars
-        add_filter( 'query_vars', array( $this, 'add_query_vars' ) );
+        // Sitemap XSL stylesheet
+        add_rewrite_rule(
+            '^sitemap\.xsl$',
+            'index.php?khm_sitemap_xsl=1',
+            'top'
+        );
+        
+        // Individual sitemaps
+        add_rewrite_rule(
+            '^sitemap_([^/]+?)\.xml$',
+            'index.php?khm_sitemap=$matches[1]',
+            'top'
+        );
+        
+        // Paginated sitemaps
+        add_rewrite_rule(
+            '^sitemap_([^/]+?)_([0-9]+)\.xml$',
+            'index.php?khm_sitemap=$matches[1]&khm_sitemap_page=$matches[2]',
+            'top'
+        );
     }
 
     /**
-     * Add custom query vars.
+     * Add query variables
      *
-     * @param array $vars Query vars.
-     * @return array Modified query vars.
+     * @param array $vars Query variables
+     * @return array Modified query variables
      */
-    public function add_query_vars( $vars ) {
+    public function add_query_vars($vars) {
         $vars[] = 'khm_sitemap';
+        $vars[] = 'khm_sitemap_page';
+        $vars[] = 'khm_sitemap_xsl';
         return $vars;
     }
 
     /**
-     * Handle sitemap requests.
+     * Handle sitemap requests
      */
     public function handle_sitemap_request() {
-        $sitemap = get_query_var( 'khm_sitemap' );
+        // Check if this is a sitemap request
+        $sitemap_type = get_query_var('khm_sitemap');
+        $sitemap_page = get_query_var('khm_sitemap_page', 1);
+        $is_xsl = get_query_var('khm_sitemap_xsl');
         
-        if ( ! $sitemap ) {
+        if ($is_xsl) {
+            $this->serve_xsl_stylesheet();
             return;
         }
-
-        $options = get_option( 'khm_seo_sitemap', array() );
         
-        if ( empty( $options['enable_xml_sitemap'] ) ) {
+        if (!$sitemap_type) {
             return;
         }
+        
+        // Serve sitemap
+        $this->serve_sitemap($sitemap_type, (int) $sitemap_page);
+    }
 
+    /**
+     * Serve sitemap content
+     *
+     * @param string $type Sitemap type
+     * @param int $page Page number
+     */
+    private function serve_sitemap($type, $page = 1) {
         // Set headers
-        header( 'Content-Type: text/xml; charset=UTF-8' );
+        $this->set_sitemap_headers();
         
-        if ( 'index' === $sitemap ) {
-            echo $this->generate_sitemap_index();
-        } else {
-            echo $this->generate_sitemap_type( $sitemap );
+        // Generate sitemap content
+        $content = $this->generate_sitemap_content($type, $page);
+        
+        if (empty($content)) {
+            $this->serve_404();
+            return;
         }
         
+        // Apply compression if enabled
+        if ($this->settings['gzip_compression'] && $this->supports_gzip()) {
+            $content = gzencode($content, 9);
+            header('Content-Encoding: gzip');
+        }
+        
+        // Output content
+        echo $content;
         exit;
     }
 
     /**
-     * Generate sitemap index.
+     * Generate sitemap content
      *
-     * @return string Sitemap index XML.
+     * @param string $type Sitemap type
+     * @param int $page Page number
+     * @return string Sitemap content
      */
-    private function generate_sitemap_index() {
-        $options = get_option( 'khm_seo_sitemap', array() );
-        $sitemaps = array();
-
-        if ( ! empty( $options['include_posts'] ) ) {
-            $sitemaps[] = array(
-                'loc'     => home_url( 'sitemap-posts.xml' ),
-                'lastmod' => $this->get_last_modified_date( 'post' )
-            );
-        }
-
-        if ( ! empty( $options['include_pages'] ) ) {
-            $sitemaps[] = array(
-                'loc'     => home_url( 'sitemap-pages.xml' ),
-                'lastmod' => $this->get_last_modified_date( 'page' )
-            );
-        }
-
-        if ( ! empty( $options['include_categories'] ) ) {
-            $sitemaps[] = array(
-                'loc'     => home_url( 'sitemap-categories.xml' ),
-                'lastmod' => $this->get_last_modified_date( 'category' )
-            );
-        }
-
-        if ( ! empty( $options['include_tags'] ) ) {
-            $sitemaps[] = array(
-                'loc'     => home_url( 'sitemap-tags.xml' ),
-                'lastmod' => $this->get_last_modified_date( 'post_tag' )
-            );
-        }
-
-        return $this->build_sitemap_index_xml( $sitemaps );
-    }
-
-    /**
-     * Generate sitemap for specific type.
-     *
-     * @param string $type Sitemap type.
-     * @return string Sitemap XML.
-     */
-    private function generate_sitemap_type( $type ) {
-        switch ( $type ) {
-            case 'posts':
-                return $this->generate_posts_sitemap();
-            case 'pages':
-                return $this->generate_pages_sitemap();
-            case 'categories':
-                return $this->generate_categories_sitemap();
-            case 'tags':
-                return $this->generate_tags_sitemap();
+    private function generate_sitemap_content($type, $page = 1) {
+        switch ($type) {
+            case 'index':
+                return $this->generator->generate_sitemap_index();
+            
+            case 'post':
+            case 'page':
+                return $this->generator->generate_post_sitemap($type, $page);
+            
+            case 'category':
+            case 'post_tag':
+                return $this->generator->generate_taxonomy_sitemap($type);
+            
+            case 'author':
+                return $this->generator->generate_author_sitemap();
+            
+            case 'images':
+                return $this->generator->generate_image_sitemap();
+            
             default:
+                // Check if it's a custom post type
+                if (post_type_exists($type)) {
+                    return $this->generator->generate_post_sitemap($type, $page);
+                }
+                
+                // Check if it's a custom taxonomy
+                if (taxonomy_exists($type)) {
+                    return $this->generator->generate_taxonomy_sitemap($type);
+                }
+                
                 return '';
         }
     }
 
     /**
-     * Generate posts sitemap.
-     *
-     * @return string Posts sitemap XML.
+     * Set sitemap headers
      */
-    private function generate_posts_sitemap() {
-        $options = get_option( 'khm_seo_sitemap', array() );
-        $limit = isset( $options['sitemap_posts_limit'] ) ? $options['sitemap_posts_limit'] : 50000;
+    private function set_sitemap_headers() {
+        // Set sitemap headers
+        header('Content-Type: application/xml; charset=UTF-8', true);
+        
+        if ($this->settings['cache_control']) {
+            header('Cache-Control: public, max-age=' . $this->settings['max_age']);
+            header('Expires: ' . gmdate('D, d M Y H:i:s', time() + $this->settings['max_age']) . ' GMT');
+        }
+        
+        header('X-Robots-Tag: noindex, follow', true);
+    }
 
-        $posts = get_posts( array(
-            'post_type'      => 'post',
-            'post_status'    => 'publish',
-            'posts_per_page' => $limit,
-            'orderby'        => 'date',
-            'order'          => 'DESC'
-        ) );
+    /**
+     * Serve XSL stylesheet
+     */
+    private function serve_xsl_stylesheet() {
+        header('Content-Type: text/xsl; charset=UTF-8', true);
+        
+        $xsl_content = $this->get_sitemap_xsl_content();
+        echo $xsl_content;
+        exit;
+    }
 
-        $urls = array();
-        foreach ( $posts as $post ) {
-            if ( $this->should_include_in_sitemap( $post ) ) {
-                $urls[] = array(
-                    'loc'     => get_permalink( $post ),
-                    'lastmod' => get_the_modified_date( 'c', $post ),
-                    'priority'=> $this->get_post_priority( $post ),
-                    'changefreq' => $this->get_post_changefreq( $post )
-                );
+    /**
+     * Get XSL stylesheet content
+     *
+     * @return string XSL content
+     */
+    private function get_sitemap_xsl_content() {
+        return '<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:output method="html" version="1.0" encoding="UTF-8" indent="yes"/>
+    <xsl:template match="/">
+        <html>
+        <head>
+            <title>XML Sitemap</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+                th { background: #f2f2f2; }
+            </style>
+        </head>
+        <body>
+            <h1>XML Sitemap</h1>
+            <table>
+                <tr><th>URL</th><th>Last Modified</th><th>Priority</th></tr>
+                <xsl:for-each select="//url">
+                    <tr>
+                        <td><xsl:value-of select="loc"/></td>
+                        <td><xsl:value-of select="lastmod"/></td>
+                        <td><xsl:value-of select="priority"/></td>
+                    </tr>
+                </xsl:for-each>
+            </table>
+        </body>
+        </html>
+    </xsl:template>
+</xsl:stylesheet>';
+    }
+
+    /**
+     * Serve 404 error
+     */
+    private function serve_404() {
+        status_header(404);
+        exit;
+    }
+
+    /**
+     * Initialize regeneration hooks
+     */
+    private function init_regeneration_hooks() {
+        // Post save/delete
+        if ($this->settings['regenerate_on_post_save']) {
+            add_action('save_post', [$this, 'maybe_regenerate_on_post_save'], 10, 2);
+            add_action('delete_post', [$this, 'regenerate_sitemap']);
+        }
+        
+        // Term save/delete
+        if ($this->settings['regenerate_on_term_save']) {
+            add_action('created_term', [$this, 'regenerate_sitemap']);
+            add_action('edited_term', [$this, 'regenerate_sitemap']);
+        }
+    }
+
+    /**
+     * Maybe regenerate on post save
+     *
+     * @param int $post_id Post ID
+     * @param \WP_Post $post Post object
+     */
+    public function maybe_regenerate_on_post_save($post_id, $post) {
+        // Skip autosaves and revisions
+        if (wp_is_post_autosave($post_id) || wp_is_post_revision($post_id)) {
+            return;
+        }
+        
+        // Only regenerate for published posts
+        if ($post->post_status === 'publish') {
+            $this->regenerate_sitemap($post->post_type);
+        }
+    }
+
+    /**
+     * Regenerate sitemap
+     *
+     * @param string $type Optional specific type to regenerate
+     */
+    public function regenerate_sitemap($type = null) {
+        // Clear relevant cache
+        $this->generator->clear_cache($type);
+        
+        // Schedule background regeneration
+        wp_schedule_single_event(time(), 'khm_seo_regenerate_sitemap', [$type]);
+        
+        // Ping search engines if enabled
+        if ($this->settings['ping_search_engines']) {
+            $this->schedule_search_engine_ping();
+        }
+    }
+
+    /**
+     * Background sitemap regeneration
+     *
+     * @param string $type Optional specific type to regenerate
+     */
+    public function regenerate_sitemap_background($type = null) {
+        // Pre-generate common sitemaps to warm cache
+        $this->generator->generate_sitemap_index();
+        
+        if (!$type || $type === 'post') {
+            $this->generator->generate_post_sitemap('post', 1);
+        }
+        
+        if (!$type || $type === 'page') {
+            $this->generator->generate_post_sitemap('page', 1);
+        }
+        
+        // Update last generated timestamp
+        update_option('khm_seo_sitemap_last_generated', time());
+    }
+
+    /**
+     * Schedule search engine ping
+     */
+    private function schedule_search_engine_ping() {
+        if (!wp_next_scheduled('khm_seo_ping_search_engines')) {
+            wp_schedule_single_event(time() + 60, 'khm_seo_ping_search_engines');
+        }
+    }
+
+    /**
+     * Ping search engines
+     */
+    public function ping_search_engines() {
+        $sitemap_url = home_url('/sitemap.xml');
+        
+        foreach ($this->search_engines as $engine => $config) {
+            if (!$config['enabled']) {
+                continue;
             }
-        }
-
-        return $this->build_sitemap_xml( $urls );
-    }
-
-    /**
-     * Generate pages sitemap.
-     *
-     * @return string Pages sitemap XML.
-     */
-    private function generate_pages_sitemap() {
-        $pages = get_pages( array(
-            'post_status' => 'publish',
-            'number'      => 0
-        ) );
-
-        $urls = array();
-        foreach ( $pages as $page ) {
-            if ( $this->should_include_in_sitemap( $page ) ) {
-                $urls[] = array(
-                    'loc'     => get_permalink( $page ),
-                    'lastmod' => get_the_modified_date( 'c', $page ),
-                    'priority'=> $this->get_page_priority( $page ),
-                    'changefreq' => 'monthly'
-                );
-            }
-        }
-
-        return $this->build_sitemap_xml( $urls );
-    }
-
-    /**
-     * Generate categories sitemap.
-     *
-     * @return string Categories sitemap XML.
-     */
-    private function generate_categories_sitemap() {
-        $categories = get_categories( array(
-            'hide_empty' => true,
-            'number'     => 0
-        ) );
-
-        $urls = array();
-        foreach ( $categories as $category ) {
-            $urls[] = array(
-                'loc'     => get_category_link( $category ),
-                'lastmod' => $this->get_category_last_modified( $category ),
-                'priority'=> '0.6',
-                'changefreq' => 'weekly'
-            );
-        }
-
-        return $this->build_sitemap_xml( $urls );
-    }
-
-    /**
-     * Generate tags sitemap.
-     *
-     * @return string Tags sitemap XML.
-     */
-    private function generate_tags_sitemap() {
-        $tags = get_tags( array(
-            'hide_empty' => true,
-            'number'     => 0
-        ) );
-
-        $urls = array();
-        foreach ( $tags as $tag ) {
-            $urls[] = array(
-                'loc'     => get_tag_link( $tag ),
-                'lastmod' => $this->get_tag_last_modified( $tag ),
-                'priority'=> '0.4',
-                'changefreq' => 'weekly'
-            );
-        }
-
-        return $this->build_sitemap_xml( $urls );
-    }
-
-    /**
-     * Build sitemap index XML.
-     *
-     * @param array $sitemaps Array of sitemaps.
-     * @return string Sitemap index XML.
-     */
-    private function build_sitemap_index_xml( $sitemaps ) {
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-        $xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
-
-        foreach ( $sitemaps as $sitemap ) {
-            $xml .= "\t<sitemap>\n";
-            $xml .= "\t\t<loc>" . esc_url( $sitemap['loc'] ) . "</loc>\n";
-            if ( ! empty( $sitemap['lastmod'] ) ) {
-                $xml .= "\t\t<lastmod>" . esc_xml( $sitemap['lastmod'] ) . "</lastmod>\n";
-            }
-            $xml .= "\t</sitemap>\n";
-        }
-
-        $xml .= '</sitemapindex>';
-        return $xml;
-    }
-
-    /**
-     * Build sitemap XML.
-     *
-     * @param array $urls Array of URLs.
-     * @return string Sitemap XML.
-     */
-    private function build_sitemap_xml( $urls ) {
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-        $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
-
-        foreach ( $urls as $url ) {
-            $xml .= "\t<url>\n";
-            $xml .= "\t\t<loc>" . esc_url( $url['loc'] ) . "</loc>\n";
             
-            if ( ! empty( $url['lastmod'] ) ) {
-                $xml .= "\t\t<lastmod>" . esc_xml( $url['lastmod'] ) . "</lastmod>\n";
-            }
+            $ping_url = $config['ping_url'] . urlencode($sitemap_url);
             
-            if ( ! empty( $url['changefreq'] ) ) {
-                $xml .= "\t\t<changefreq>" . esc_xml( $url['changefreq'] ) . "</changefreq>\n";
-            }
+            $response = wp_remote_get($ping_url, [
+                'timeout' => 30,
+                'user-agent' => 'KHM SEO Plugin'
+            ]);
             
-            if ( ! empty( $url['priority'] ) ) {
-                $xml .= "\t\t<priority>" . esc_xml( $url['priority'] ) . "</priority>\n";
-            }
+            $this->log_ping_result($engine, $response);
+        }
+    }
+
+    /**
+     * Log ping result
+     *
+     * @param string $engine Search engine
+     * @param array|\WP_Error $response HTTP response
+     */
+    private function log_ping_result($engine, $response) {
+        $ping_log = get_option('khm_seo_ping_log', []);
+        
+        $result = [
+            'engine' => $engine,
+            'timestamp' => time(),
+            'success' => !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200,
+            'response_code' => !is_wp_error($response) ? wp_remote_retrieve_response_code($response) : 0,
+            'error' => is_wp_error($response) ? $response->get_error_message() : ''
+        ];
+        
+        $ping_log[] = $result;
+        $ping_log = array_slice($ping_log, -50);
+        
+        update_option('khm_seo_ping_log', $ping_log);
+    }
+
+    /**
+     * Check if gzip compression is supported
+     *
+     * @return bool Whether gzip is supported
+     */
+    private function supports_gzip() {
+        return function_exists('gzencode') && 
+               isset($_SERVER['HTTP_ACCEPT_ENCODING']) && 
+               strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip') !== false;
+    }
+
+    /**
+     * Maybe flush rewrite rules
+     */
+    public function maybe_flush_rewrite_rules() {
+        if (get_option('khm_seo_sitemap_rewrite_rules_flushed') !== '1') {
+            flush_rewrite_rules(false);
+            update_option('khm_seo_sitemap_rewrite_rules_flushed', '1');
+        }
+    }
+
+    /**
+     * Get sitemap statistics
+     *
+     * @return array Sitemap statistics
+     */
+    public function get_sitemap_statistics() {
+        $stats = [
+            'total_urls' => 0,
+            'post_types' => [],
+            'taxonomies' => [],
+            'last_generated' => get_option('khm_seo_sitemap_last_generated'),
+            'ping_history' => get_option('khm_seo_ping_log', [])
+        ];
+        
+        // Get post type counts
+        $post_types = get_post_types(['public' => true], 'objects');
+        foreach ($post_types as $post_type) {
+            $count = wp_count_posts($post_type->name);
+            $stats['post_types'][$post_type->name] = [
+                'label' => $post_type->label,
+                'count' => $count->publish ?? 0
+            ];
+            $stats['total_urls'] += $count->publish ?? 0;
+        }
+        
+        return $stats;
+    }
+
+    /**
+     * Test sitemap accessibility
+     *
+     * @return array Test results
+     */
+    public function test_sitemap_accessibility() {
+        $tests = [
+            'index' => ['url' => home_url('/sitemap.xml'), 'status' => null]
+        ];
+        
+        foreach ($tests as $type => &$test) {
+            $response = wp_remote_get($test['url'], ['timeout' => 10]);
             
-            $xml .= "\t</url>\n";
-        }
-
-        $xml .= '</urlset>';
-        return $xml;
-    }
-
-    /**
-     * Check if post should be included in sitemap.
-     *
-     * @param object $post Post object.
-     * @return bool Whether to include in sitemap.
-     */
-    private function should_include_in_sitemap( $post ) {
-        // Check if post is excluded via meta
-        $exclude = get_post_meta( $post->ID, '_khm_seo_exclude_sitemap', true );
-        
-        if ( $exclude ) {
-            return false;
-        }
-
-        // Check robots meta
-        $robots = get_post_meta( $post->ID, '_khm_seo_robots', true );
-        
-        if ( false !== strpos( $robots, 'noindex' ) ) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Get post priority for sitemap.
-     *
-     * @param object $post Post object.
-     * @return string Priority value.
-     */
-    private function get_post_priority( $post ) {
-        // Higher priority for newer posts
-        $days_old = ( time() - strtotime( $post->post_date ) ) / DAY_IN_SECONDS;
-        
-        if ( $days_old < 7 ) {
-            return '1.0';
-        } elseif ( $days_old < 30 ) {
-            return '0.8';
-        } elseif ( $days_old < 90 ) {
-            return '0.6';
-        } else {
-            return '0.4';
-        }
-    }
-
-    /**
-     * Get page priority for sitemap.
-     *
-     * @param object $page Page object.
-     * @return string Priority value.
-     */
-    private function get_page_priority( $page ) {
-        // Home page gets highest priority
-        if ( $page->ID == get_option( 'page_on_front' ) ) {
-            return '1.0';
+            if (is_wp_error($response)) {
+                $test['status'] = 'error';
+                $test['message'] = $response->get_error_message();
+            } else {
+                $code = wp_remote_retrieve_response_code($response);
+                $test['status'] = $code === 200 ? 'success' : 'warning';
+                $test['response_code'] = $code;
+            }
         }
         
-        // Parent pages get higher priority
-        if ( $page->post_parent == 0 ) {
-            return '0.8';
-        }
-        
-        return '0.6';
-    }
-
-    /**
-     * Get post change frequency.
-     *
-     * @param object $post Post object.
-     * @return string Change frequency.
-     */
-    private function get_post_changefreq( $post ) {
-        $days_old = ( time() - strtotime( $post->post_modified ) ) / DAY_IN_SECONDS;
-        
-        if ( $days_old < 7 ) {
-            return 'daily';
-        } elseif ( $days_old < 30 ) {
-            return 'weekly';
-        } else {
-            return 'monthly';
-        }
-    }
-
-    /**
-     * Get last modified date for post type.
-     *
-     * @param string $type Post type or taxonomy.
-     * @return string Last modified date.
-     */
-    private function get_last_modified_date( $type ) {
-        global $wpdb;
-        
-        switch ( $type ) {
-            case 'post':
-            case 'page':
-                $result = $wpdb->get_var( $wpdb->prepare(
-                    "SELECT post_modified_gmt FROM {$wpdb->posts} 
-                     WHERE post_type = %s AND post_status = 'publish' 
-                     ORDER BY post_modified_gmt DESC LIMIT 1",
-                    $type
-                ) );
-                break;
-            case 'category':
-            case 'post_tag':
-                $result = $wpdb->get_var( $wpdb->prepare(
-                    "SELECT p.post_modified_gmt FROM {$wpdb->posts} p
-                     INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
-                     INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
-                     WHERE tt.taxonomy = %s AND p.post_status = 'publish'
-                     ORDER BY p.post_modified_gmt DESC LIMIT 1",
-                    $type
-                ) );
-                break;
-            default:
-                $result = current_time( 'mysql', true );
-        }
-        
-        return $result ? date( 'c', strtotime( $result ) ) : date( 'c' );
-    }
-
-    /**
-     * Get category last modified date.
-     *
-     * @param object $category Category object.
-     * @return string Last modified date.
-     */
-    private function get_category_last_modified( $category ) {
-        global $wpdb;
-        
-        $result = $wpdb->get_var( $wpdb->prepare(
-            "SELECT p.post_modified_gmt FROM {$wpdb->posts} p
-             INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
-             WHERE tr.term_taxonomy_id = %d AND p.post_status = 'publish'
-             ORDER BY p.post_modified_gmt DESC LIMIT 1",
-            $category->term_id
-        ) );
-        
-        return $result ? date( 'c', strtotime( $result ) ) : date( 'c' );
-    }
-
-    /**
-     * Get tag last modified date.
-     *
-     * @param object $tag Tag object.
-     * @return string Last modified date.
-     */
-    private function get_tag_last_modified( $tag ) {
-        return $this->get_category_last_modified( $tag );
-    }
-
-    /**
-     * Generate sitemap (for scheduled task).
-     */
-    public function generate_sitemap() {
-        // This can be used for generating static sitemap files if needed
-        do_action( 'khm_seo_sitemap_generated' );
+        return $tests;
     }
 }
