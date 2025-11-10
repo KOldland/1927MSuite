@@ -20,6 +20,7 @@ use KHM_SEO\Sitemap\SitemapManager;
 use KHM_SEO\Admin\AdminManager;
 use KHM_SEO\Tools\ToolsManager;
 use KHM_SEO\Social\SocialMediaManager;
+use KHM_SEO\Validation\SchemaValidator;
 use KHM_SEO\Utils\DatabaseManager;
 use KHM_SEO\Analysis\AnalysisEngine;
 use KHMSeo\Editor\EditorManager;
@@ -91,6 +92,13 @@ final class Plugin {
      * @var Schema\Admin\SchemaAdminManager|null
      */
     public $schema_admin = null;
+
+    /**
+     * Schema validator instance.
+     *
+     * @var SchemaValidator|null
+     */
+    public $validator = null;
 
     /**
      * Database manager instance.
@@ -183,6 +191,9 @@ final class Plugin {
         if ( is_admin() ) {
             $this->schema_admin = new SchemaAdminManager();
         }
+        
+        // Initialize Phase 5 schema validation
+        $this->validator = new SchemaValidator();
         
         // Initialize analysis engine with default configuration
         $this->analysis = new AnalysisEngine( $this->get_analysis_config() );
