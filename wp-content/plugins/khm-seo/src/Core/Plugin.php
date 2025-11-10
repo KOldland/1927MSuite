@@ -80,6 +80,13 @@ final class Plugin {
     public $tools = null;
 
     /**
+     * Preview manager instance.
+     *
+     * @var Preview\SocialMediaPreviewManager|null
+     */
+    public $preview = null;
+
+    /**
      * Social media manager instance.
      *
      * @var SocialMediaManager|null
@@ -192,8 +199,11 @@ final class Plugin {
             $this->schema_admin = new SchemaAdminManager();
         }
         
-        // Initialize Phase 5 schema validation
-        $this->validator = new SchemaValidator();
+        // Initialize Phase 5 schema validator
+        $this->schema_validator = new Validation\SchemaValidator();
+        
+        // Initialize Phase 6 social media preview manager
+        $this->preview = new Preview\SocialMediaPreviewManager();
         
         // Initialize analysis engine with default configuration
         $this->analysis = new AnalysisEngine( $this->get_analysis_config() );
