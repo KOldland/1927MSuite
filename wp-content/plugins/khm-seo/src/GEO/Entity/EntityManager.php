@@ -103,6 +103,14 @@ class EntityManager {
     public function get_content_analyzer() {
         return $this->content_analyzer;
     }
+
+    /**
+     * Get scoring engine instance
+     * @return \KHM_SEO\GEO\Scoring\ScoringEngine
+     */
+    public function get_scoring_engine() {
+        return $this->scoring_engine;
+    }
     
     /**
      * @var EntityTables Database tables manager
@@ -153,12 +161,18 @@ class EntityManager {
     private $content_analyzer;
 
     /**
+     * @var \KHM_SEO\GEO\Scoring\ScoringEngine Scoring engine instance
+     */
+    private $scoring_engine;
+
+    /**
      * Constructor
      */
     public function __construct() {
         $this->tables = new EntityTables();
         $this->auto_linker = new \KHM_SEO\GEO\AutoLink\AutoLinker( $this );
         $this->content_analyzer = new \KHM_SEO\GEO\Content\ContentAnalyzer( $this );
+        $this->scoring_engine = new \KHM_SEO\GEO\Scoring\ScoringEngine();
         $this->init_hooks();
     }
     

@@ -100,18 +100,103 @@ class AnswerCard extends Widget_Base {
     }
 
     /**
-     * Format confidence score for display
+     * Render quality score display
      */
-    protected function format_confidence_score( $score ) {
-        $score = floatval( $score );
+    protected function render_quality_score_display() {
+        $settings = $this->get_settings_for_display();
 
-        if ( $score >= 0.9 ) {
-            return 'High (' . round( $score * 100 ) . '%)';
-        } elseif ( $score >= 0.7 ) {
-            return 'Medium (' . round( $score * 100 ) . '%)';
-        } else {
-            return 'Low (' . round( $score * 100 ) . '%)';
+        // Get scoring engine
+        $scoring_engine = $this->get_scoring_engine();
+        if ( ! $scoring_engine ) {
+            return '<div class="khm-quality-score-error">Scoring engine not available</div>';
         }
+
+        // Calculate score
+        global $post;
+        $context = array(
+            'post_id' => $post ? $post->ID : 0,
+            'target_keywords' => array(), // Could be populated from SEO analysis
+        );
+
+        $score_data = $scoring_engine->calculate_score( $settings, $context );
+        $quality_display = $scoring_engine->get_quality_display( $score_data['quality_level'] );
+
+        $html = '<div class="khm-quality-score-container" style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa;">';
+
+        // Score header
+        $html .= '<div class="khm-quality-score-header" style="display: flex; align-items: center; margin-bottom: 10px;">';
+        $html .= '<span style="font-weight: 600; margin-right: 10px;">Quality Score:</span>';
+        $html .= '<span class="khm-quality-badge" data-quality="' . esc_attr( $score_data['quality_level'] ) . '" style="background: ' . esc_attr( $quality_display['bg_color'] ) . '; color: ' . esc_attr( $quality_display['color'] ) . '; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 500;">';
+        $html .= esc_html( $quality_display['label'] ) . ' (' . round( $score_data['total_score'] * 100 ) . '%)';
+        $html .= '</span>';
+        $html .= '</div>';
+
+        // Score breakdown
+        $html .= '<div class="khm-quality-breakdown" style="margin-bottom: 15px;">';
+        $html .= '<div style="font-size: 12px; color: #666; margin-bottom: 5px;">Score Breakdown:</div>';
+
+        $criteria_labels = array(
+            'content_completeness' => 'Content Completeness',
+            'confidence_score' => 'Confidence Score',
+            'citation_quality' => 'Citation Quality',
+            'entity_linkage' => 'Entity Linkage',
+            'content_quality' => 'Content Quality',
+            'seo_optimization' => 'SEO Optimization',
+        );
+
+        foreach ( $score_data['scores'] as $criterion => $score ) {
+            $percentage = round( $score * 100 );
+            $weight = \KHM_SEO\GEO\Scoring\ScoringEngine::CRITERIA_WEIGHTS[$criterion] ?? 0;
+            $weighted_score = round( $score * $weight * 100 );
+
+            $html .= '<div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">';
+            $html .= '<span>' . esc_html( $criteria_labels[$criterion] ?? $criterion ) . '</span>';
+            $html .= '<span>' . $percentage . '% (' . $weighted_score . 'pts)</span>';
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+
+        // Recommendations
+        if ( ! empty( $score_data['recommendations'] ) ) {
+            $html .= '<div class="khm-quality-recommendations">';
+            $html .= '<div style="font-size: 12px; color: #666; margin-bottom: 5px;">Recommendations:</div>';
+            $html .= '<ul style="margin: 0; padding-left: 15px; font-size: 11px; color: #555;">';
+            foreach ( $score_data['recommendations'] as $recommendation ) {
+                $html .= '<li>' . esc_html( $recommendation ) . '</li>';
+            }
+            $html .= '</ul>';
+            $html .= '</div>';
+        }
+
+        // Publish status
+        $publish_status = $score_data['is_publishable'] ? 'Ready to publish' : 'Needs improvement';
+        $status_color = $score_data['is_publishable'] ? '#2e7d32' : '#d32f2f';
+
+        $html .= '<div class="khm-publish-status" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;">';
+        $html .= '<span style="font-size: 12px; color: ' . esc_attr( $status_color ) . ';">';
+        $html .= esc_html( $publish_status );
+        $html .= '</span>';
+        $html .= '</div>';
+
+        $html .= '</div>';
+
+        return $html;
+    }
+
+    /**
+     * Get scoring engine instance
+     */
+    protected function get_scoring_engine() {
+        static $scoring_engine = null;
+
+        if ( $scoring_engine === null ) {
+            $entity_manager = khm_seo()->geo->get_entity_manager();
+            if ( $entity_manager ) {
+                $scoring_engine = $entity_manager->get_scoring_engine();
+            }
+        }
+
+        return $scoring_engine;
     }
 
     /**
@@ -379,19 +464,26 @@ class AnswerCard extends Widget_Base {
         );
 
         $this->add_control(
-            'auto_populate_now',
+            'show_quality_score',
             array(
-                'label' => __( 'Populate Now', 'khm-seo' ),
-                'type' => Controls_Manager::BUTTON,
-                'text' => __( 'Generate Q/A', 'khm-seo' ),
-                'event' => 'khm:populate_answer_card',
-                'condition' => array(
-                    'enable_auto_population' => 'yes',
-                ),
+                'label' => __( 'Show Quality Score', 'khm-seo' ),
+                'type' => Controls_Manager::SWITCHER,
+                'default' => 'yes',
+                'description' => __( 'Display quality score and recommendations in editor', 'khm-seo' ),
             )
         );
 
-        $this->end_controls_section();
+        $this->add_control(
+            'quality_score_display',
+            array(
+                'label' => __( 'Quality Score', 'khm-seo' ),
+                'type' => Controls_Manager::RAW_HTML,
+                'raw' => $this->render_quality_score_display(),
+                'condition' => array(
+                    'show_quality_score' => 'yes',
+                ),
+            )
+        );
 
         // Style Tab
         $this->start_controls_section(
@@ -580,6 +672,21 @@ class AnswerCard extends Widget_Base {
             </details>
         </div>
         <?php
+    }
+
+    /**
+     * Format confidence score for display
+     */
+    protected function format_confidence_score( $score ) {
+        $score = floatval( $score );
+
+        if ( $score >= 0.9 ) {
+            return 'High (' . round( $score * 100 ) . '%)';
+        } elseif ( $score >= 0.7 ) {
+            return 'Medium (' . round( $score * 100 ) . '%)';
+        } else {
+            return 'Low (' . round( $score * 100 ) . '%)';
+        }
     }
 
     /**

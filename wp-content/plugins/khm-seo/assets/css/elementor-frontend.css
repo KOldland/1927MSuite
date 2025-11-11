@@ -180,6 +180,89 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
+/* Quality Score Display */
+.khm-quality-score-container {
+    background: #fafafa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    margin: 10px 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.khm-quality-score-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.khm-quality-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.khm-quality-breakdown {
+    margin-bottom: 15px;
+}
+
+.khm-quality-breakdown div {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    margin-bottom: 2px;
+    color: #555;
+}
+
+.khm-quality-recommendations ul {
+    margin: 0;
+    padding-left: 15px;
+    font-size: 11px;
+    color: #666;
+}
+
+.khm-quality-recommendations li {
+    margin-bottom: 3px;
+}
+
+.khm-publish-status {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+    font-size: 12px;
+}
+
+/* Quality level color schemes */
+.khm-quality-badge[data-quality="excellent"] {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+
+.khm-quality-badge[data-quality="good"] {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.khm-quality-badge[data-quality="fair"] {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.khm-quality-badge[data-quality="poor"] {
+    background: #ffebee;
+    color: #d32f2f;
+}
+
+.khm-quality-badge[data-quality="critical"] {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
 /* Client Badge Widget */
 .khm-client-badge {
     display: inline-block;
