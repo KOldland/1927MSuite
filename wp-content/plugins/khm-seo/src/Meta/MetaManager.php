@@ -56,7 +56,7 @@ class MetaManager {
 
         if ( \is_home() || \is_front_page() ) {
             return $this->get_home_title();
-        }
+    
 
         if ( \is_author() ) {
             return $this->get_author_title();
