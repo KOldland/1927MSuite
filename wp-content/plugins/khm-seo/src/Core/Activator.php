@@ -49,6 +49,9 @@ class Activator {
 
         $charset_collate = $wpdb->get_charset_collate();
 
+        // Create entity tables for GEO functionality
+        self::create_entity_tables();
+
         // Posts meta table
         $posts_table = $wpdb->prefix . 'khm_seo_posts';
         $posts_sql = "CREATE TABLE $posts_table (
@@ -100,6 +103,17 @@ class Activator {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta( $posts_sql );
         dbDelta( $terms_sql );
+    }
+
+    /**
+     * Create entity tables for GEO functionality.
+     */
+    private static function create_entity_tables() {
+        // Use the EntityTables class to create GEO tables
+        require_once KHM_SEO_PLUGIN_DIR . 'src/GEO/Database/EntityTables.php';
+        
+        $entity_tables = new \KHM_SEO\GEO\Database\EntityTables();
+        $entity_tables->install_tables();
     }
 
     /**

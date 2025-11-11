@@ -143,6 +143,13 @@ final class Plugin {
      * @var AdvancedAnalyticsEngine|null
      */
     public $analytics = null;
+    
+    /**
+     * GEO (Generative Engine Optimization) manager instance.
+     *
+     * @var GEO\GEOManager|null
+     */
+    public $geo = null;
 
     /**
      * Get plugin instance.
@@ -237,6 +244,9 @@ final class Plugin {
         if ( is_admin() ) {
             $this->analytics = new AdvancedAnalyticsEngine();
         }
+        
+        // Initialize GEO (Generative Engine Optimization) manager
+        $this->geo = new \KHM_SEO\GEO\GEOManager();
     }
 
     /**
@@ -400,6 +410,15 @@ final class Plugin {
      */
     public function get_performance_monitor() {
         return $this->performance;
+    }
+
+    /**
+     * Get GEO manager instance.
+     *
+     * @return \KHM_SEO\GEO\GEOManager|null
+     */
+    public function get_geo_manager() {
+        return $this->geo;
     }
 
     /**
