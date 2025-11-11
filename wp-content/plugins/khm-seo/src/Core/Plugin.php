@@ -24,6 +24,7 @@ use KHM_SEO\Validation\SchemaValidator;
 use KHM_SEO\Utils\DatabaseManager;
 use KHM_SEO\Analysis\AnalysisEngine;
 use KHMSeo\Editor\EditorManager;
+use KHM_SEO\Performance\PerformanceMonitor;
 
 /**
  * Main plugin class.
@@ -129,6 +130,13 @@ final class Plugin {
     public $editor = null;
 
     /**
+     * Performance monitor instance.
+     *
+     * @var PerformanceMonitor|null
+     */
+    public $performance = null;
+
+    /**
      * Get plugin instance.
      *
      * @return Plugin
@@ -211,6 +219,11 @@ final class Plugin {
         // Initialize editor manager for Phase 2
         $this->editor = new EditorManager();
         $this->editor->init();
+        
+        // Initialize Phase 7 performance monitor
+        if ( is_admin() ) {
+            $this->performance = new PerformanceMonitor();
+        }
     }
 
     /**
@@ -279,7 +292,8 @@ final class Plugin {
                null !== $this->sitemap && 
                null !== $this->admin && 
                null !== $this->tools &&
-               null !== $this->analysis;
+               null !== $this->analysis &&
+               ( ! is_admin() || null !== $this->performance );
     }
 
     /**
@@ -364,6 +378,15 @@ final class Plugin {
      */
     public function get_analysis_engine() {
         return $this->analysis;
+    }
+
+    /**
+     * Get performance monitor instance.
+     *
+     * @return PerformanceMonitor|null
+     */
+    public function get_performance_monitor() {
+        return $this->performance;
     }
 
     /**

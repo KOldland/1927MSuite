@@ -113,6 +113,15 @@ class AdminManager {
             'khm-seo-tools',
             array( $this, 'tools_page' )
         );
+
+        add_submenu_page(
+            'khm-seo',
+            __( 'Performance Monitor', 'khm-seo' ),
+            __( 'Performance', 'khm-seo' ),
+            'manage_options',
+            'khm-seo-performance',
+            array( $this, 'performance_page' )
+        );
     }
 
     /**
@@ -125,6 +134,7 @@ class AdminManager {
         register_setting( 'khm_seo_sitemap', 'khm_seo_sitemap' );
         register_setting( 'khm_seo_schema', 'khm_seo_schema' );
         register_setting( 'khm_seo_tools', 'khm_seo_tools' );
+        register_setting( 'khm_seo_performance', 'khm_seo_performance' );
     }
 
     /**
@@ -542,5 +552,23 @@ class AdminManager {
         }
 
         return $analysis;
+    }
+
+    /**
+     * Performance monitoring page.
+     */
+    public function performance_page() {
+        // Check if performance monitor is available
+        $plugin = \KHM_SEO\Core\Plugin::instance();
+        $performance_monitor = $plugin->get_performance_monitor();
+        
+        if ( ! $performance_monitor ) {
+            echo '<div class="wrap"><h1>' . __( 'Performance Monitor', 'khm-seo' ) . '</h1>';
+            echo '<div class="notice notice-error"><p>' . __( 'Performance monitor is not available.', 'khm-seo' ) . '</p></div></div>';
+            return;
+        }
+        
+        // Render the performance dashboard
+        $performance_monitor->render_dashboard();
     }
 }
