@@ -134,6 +134,8 @@ $can_delete = current_user_can( 'delete_posts' );
     
     <!-- Entities Table -->
     <div class="khm-geo-table-container">
+    <!-- Notification area for AJAX feedback -->
+    <div id="khm-geo-notification" style="display:none;" class="notice notice-success is-dismissible"></div>
         <table class="wp-list-table widefat fixed striped khm-geo-entities-table">
             <thead>
                 <tr>
@@ -244,13 +246,19 @@ $can_delete = current_user_can( 'delete_posts' );
                             </td>
                             
                             <td class="column-aliases" data-colname="<?php _e( 'Aliases', 'khm-seo' ); ?>">
-                                <?php if ( isset( $entity->alias_count ) && $entity->alias_count > 0 ) : ?>
-                                    <span class="khm-alias-count">
-                                        <?php echo sprintf( _n( '%d alias', '%d aliases', $entity->alias_count, 'khm-seo' ), $entity->alias_count ); ?>
-                                    </span>
+                                <?php if ( !empty( $entity->aliases ) ) : ?>
+                                    <ul class="khm-alias-list">
+                                        <?php foreach ( $entity->aliases as $alias ) : ?>
+                                            <li>
+                                                <?php echo esc_html( $alias ); ?>
+                                                <button type="button" class="khm-remove-alias" data-entity-id="<?php echo esc_attr( $entity->id ); ?>" data-alias="<?php echo esc_attr( $alias ); ?>">&times;</button>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
                                 <?php else : ?>
                                     <span class="khm-no-aliases"><?php _e( 'No aliases', 'khm-seo' ); ?></span>
                                 <?php endif; ?>
+                                <button type="button" class="button khm-add-alias" data-entity-id="<?php echo esc_attr( $entity->id ); ?>">Add Alias</button>
                             </td>
                             
                             <td class="column-usage" data-colname="<?php _e( 'Usage', 'khm-seo' ); ?>">

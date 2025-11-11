@@ -15,6 +15,7 @@ namespace KHM_SEO\GEO;
 use KHM_SEO\GEO\Entity\EntityManager;
 use KHM_SEO\GEO\Database\EntityTables;
 use KHM_SEO\GEO\API\EntityAPI;
+use KHM_SEO\GEO\Validation\EntityValidator;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly
@@ -25,6 +26,48 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Main coordinator for GEO functionality within the KHM SEO plugin
  */
 class GEOManager {
+    /**
+     * AJAX: Remove alias from entity
+     */
+    public function ajax_remove_alias() {
+        check_ajax_referer( 'khm_seo_ajax', 'nonce' );
+        $entity_id = intval( $_POST['entity_id'] ?? 0 );
+        $alias = sanitize_text_field( $_POST['alias'] ?? '' );
+        if ( ! $entity_id || ! $alias ) {
+            wp_send_json_error( 'Missing entity or alias' );
+        }
+        $entity = $this->entity_manager->get_entity( $entity_id );
+        if ( ! $entity ) {
+            wp_send_json_error( 'Entity not found' );
+        }
+        $aliases = $this->entity_manager->get_entity_aliases( $entity_id );
+        $aliases = array_diff( $aliases, array( $alias ) );
+        $this->entity_manager->set_entity_aliases( $entity_id, $aliases );
+        wp_send_json_success();
+    }
+
+    /**
+     * AJAX: Add alias to entity
+     */
+    public function ajax_add_alias() {
+        check_ajax_referer( 'khm_seo_ajax', 'nonce' );
+        $entity_id = intval( $_POST['entity_id'] ?? 0 );
+        $alias = sanitize_text_field( $_POST['alias'] ?? '' );
+        if ( ! $entity_id || ! $alias ) {
+            wp_send_json_error( 'Missing entity or alias' );
+        }
+        $entity = $this->entity_manager->get_entity( $entity_id );
+        if ( ! $entity ) {
+            wp_send_json_error( 'Entity not found' );
+        }
+        $aliases = $this->entity_manager->get_entity_aliases( $entity_id );
+        if ( in_array( $alias, $aliases ) ) {
+            wp_send_json_error( 'Alias already exists' );
+        }
+        $aliases[] = $alias;
+        $this->entity_manager->set_entity_aliases( $entity_id, $aliases );
+        wp_send_json_success();
+    }
     /**
      * Handle entity edit form submission
      */
@@ -85,8 +128,51 @@ class GEOManager {
                     break;
             }
         }
+        // Set an admin notice (redirect flow) — but for AJAX we return JSON
         wp_redirect( admin_url( 'admin.php?page=khm-seo-entities' ) );
         exit;
+    }
+
+    /**
+     * AJAX handler for bulk actions — returns JSON summary
+     */
+    public function ajax_handle_bulk_action() {
+        check_ajax_referer( 'khm_seo_ajax', 'nonce' );
+        if ( ! current_user_can( 'delete_posts' ) ) {
+            wp_send_json_error( 'Insufficient permissions' );
+        }
+        $action = sanitize_text_field( $_POST['bulk_action'] ?? '' );
+        $ids = array_map( 'intval', $_POST['entity_ids'] ?? array() );
+        if ( empty( $action ) || empty( $ids ) ) {
+            wp_send_json_error( 'Missing action or entity IDs' );
+        }
+        $result = array( 'updated_ids' => array(), 'failed_ids' => array() );
+        foreach ( $ids as $id ) {
+            try {
+                switch ( $action ) {
+                    case 'activate':
+                        $ok = $this->entity_manager->update_entity( $id, array( 'status' => 'active' ) );
+                        break;
+                    case 'deprecate':
+                        $ok = $this->entity_manager->update_entity( $id, array( 'status' => 'deprecated' ) );
+                        break;
+                    case 'delete':
+                        $ok = $this->entity_manager->delete_entity( $id );
+                        break;
+                    default:
+                        $ok = false;
+                }
+            } catch ( \Exception $e ) {
+                $ok = false;
+            }
+            if ( $ok ) {
+                $result['updated_ids'][] = $id;
+            } else {
+                $result['failed_ids'][] = $id;
+            }
+        }
+        $message = sprintf( '%d processed, %d failed', count( $result['updated_ids'] ), count( $result['failed_ids'] ) );
+        wp_send_json_success( array( 'message' => $message, 'updated_ids' => $result['updated_ids'], 'failed_ids' => $result['failed_ids'] ) );
     }
     
     /**
@@ -103,6 +189,11 @@ class GEOManager {
      * @var EntityAPI API handler
      */
     private $entity_api;
+
+    /**
+     * @var EntityValidator Validation handler
+     */
+    private $entity_validator;
     
     /**
      * @var array GEO configuration
@@ -130,12 +221,17 @@ class GEOManager {
         
         // Initialize API
         $this->entity_api = new EntityAPI();
+
+        // Initialize validator
+        $this->entity_validator = new EntityValidator( $this->entity_manager );
     }
     
     /**
      * Initialize WordPress hooks
      */
     private function init_hooks() {
+    add_action( 'wp_ajax_khm_geo_remove_alias', array( $this, 'ajax_remove_alias' ) );
+    add_action( 'wp_ajax_khm_geo_add_alias', array( $this, 'ajax_add_alias' ) );
         // Plugin initialization
         add_action( 'init', array( $this, 'on_init' ) );
         add_action( 'admin_init', array( $this, 'on_admin_init' ) );
@@ -161,6 +257,10 @@ class GEOManager {
         // AJAX actions
         add_action( 'wp_ajax_khm_geo_quick_search', array( $this, 'ajax_quick_entity_search' ) );
         add_action( 'wp_ajax_khm_geo_validate_post', array( $this, 'ajax_validate_post_entities' ) );
+        add_action( 'wp_ajax_khm_geo_bulk_action_ajax', array( $this, 'ajax_handle_bulk_action' ) );
+
+        // Validation hooks
+        add_filter( 'wp_insert_post_data', array( $this->entity_validator, 'pre_publish_validation' ), 10, 2 );
     }
     
     /**

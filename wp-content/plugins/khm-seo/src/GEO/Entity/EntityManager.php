@@ -88,11 +88,12 @@ class EntityManager {
     }
 
     /**
-     * Get valid entity statuses
-     * @return array
+     * Get table name
+     * @param string $table Table key
+     * @return string
      */
-    public function get_valid_statuses() {
-        return $this->valid_statuses;
+    public function get_table_name( $table ) {
+        return $this->tables->get_table_name( $table );
     }
     
     /**
