@@ -424,9 +424,12 @@ class SchemaValidator {
         $response = wp_remote_get($url);
         
         if (is_wp_error($response)) {
+            $error_message = is_callable([$response, 'get_error_message']) ? 
+                $response->get_error_message() : 'Unknown fetch error';
+            
             $result['errors'][] = [
                 'type' => 'fetch_error',
-                'message' => 'Could not fetch URL: ' . $response->get_error_message(),
+                'message' => 'Could not fetch URL: ' . $error_message,
                 'severity' => 'high'
             ];
             return $result;

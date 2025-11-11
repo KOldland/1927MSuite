@@ -139,7 +139,8 @@ class SocialMediaManager {
         $this->output_og_image_tags();
         
         // Article-specific tags for posts
-        if ( \is_single() && $post ) {
+        // @phpstan-ignore-next-line WordPress function available in runtime
+        if ( function_exists('is_single') && \is_single() && $post ) {
             $this->output_article_og_tags( $post );
         }
         
