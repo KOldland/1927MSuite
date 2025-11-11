@@ -20,6 +20,8 @@ use KHM_SEO\GEO\Validation\ValidationManager;
 use KHM_SEO\GEO\Measurement\MeasurementManager;
 use KHM_SEO\GEO\Measurement\MeasurementTables;
 use KHM_SEO\GEO\Schema\SchemaDedupManager;
+use KHM_SEO\GEO\Series\SeriesManager;
+use KHM_SEO\GEO\Series\SeriesTables;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly
@@ -225,6 +227,16 @@ class GEOManager {
     private $schema_dedup_manager;
     
     /**
+     * @var SeriesManager Series management for AnswerCards
+     */
+    private $series_manager;
+    
+    /**
+     * @var SeriesTables Series database tables manager
+     */
+    private $series_tables;
+    
+    /**
      * Constructor
      */
     public function __construct() {
@@ -260,8 +272,15 @@ class GEOManager {
         
         // Initialize schema deduplication manager
         $this->schema_dedup_manager = new SchemaDedupManager( $this->entity_manager );
+        
+        // Initialize series tables
+        $this->series_tables = new SeriesTables();
+        
+        // Initialize series manager
+        $this->series_manager = new SeriesManager( $this->entity_manager );
+        $this->series_manager->set_series_tables( $this->series_tables );
     }
-    
+
     /**
      * Initialize WordPress hooks
      */
@@ -854,6 +873,24 @@ class GEOManager {
      */
     public function get_schema_dedup_manager() {
         return $this->schema_dedup_manager;
+    }
+    
+    /**
+     * Get series manager instance
+     * 
+     * @return SeriesManager
+     */
+    public function get_series_manager() {
+        return $this->series_manager;
+    }
+    
+    /**
+     * Get series tables instance
+     * 
+     * @return SeriesTables
+     */
+    public function get_series_tables() {
+        return $this->series_tables;
     }
     
     /**
