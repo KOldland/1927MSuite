@@ -25,6 +25,7 @@ use KHM_SEO\Utils\DatabaseManager;
 use KHM_SEO\Analysis\AnalysisEngine;
 use KHMSeo\Editor\EditorManager;
 use KHM_SEO\Performance\PerformanceMonitor;
+use KHM_SEO\Analytics\AdvancedAnalyticsEngine;
 
 /**
  * Main plugin class.
@@ -135,6 +136,13 @@ final class Plugin {
      * @var PerformanceMonitor|null
      */
     public $performance = null;
+    
+    /**
+     * Advanced analytics engine instance.
+     *
+     * @var AdvancedAnalyticsEngine|null
+     */
+    public $analytics = null;
 
     /**
      * Get plugin instance.
@@ -223,6 +231,11 @@ final class Plugin {
         // Initialize Phase 7 performance monitor
         if ( is_admin() ) {
             $this->performance = new PerformanceMonitor();
+        }
+        
+        // Initialize Phase 8 advanced analytics engine
+        if ( is_admin() ) {
+            $this->analytics = new AdvancedAnalyticsEngine();
         }
     }
 
