@@ -32,6 +32,87 @@ class AnswerCard extends Widget_Base {
     public function get_name() {
         return 'khm-answer-card';
     }
+    /**
+     * Auto-populate content from page analysis
+     */
+    protected function auto_populate_content( $settings ) {
+        if ( 'yes' !== $settings['enable_auto_population'] ) {
+            return;
+        }
+
+        $content_analyzer = khm_seo()->geo->get_entity_manager()->get_content_analyzer();
+        if ( ! $content_analyzer ) {
+            return;
+        }
+
+        // Get current page content
+        global $post;
+        $post_id = $post ? $post->ID : 0;
+        if ( ! $post_id ) {
+            return;
+        }
+
+        $content = $post ? $post->post_content : '';
+        if ( empty( $content ) ) {
+            return;
+        }
+
+        // Analyze content for Q/A pairs
+        $qa_pairs = $content_analyzer->extract_qa_pairs( $content );
+
+        if ( empty( $qa_pairs ) ) {
+            return;
+        }
+
+        // Find best match based on population source
+        $best_match = null;
+        $highest_confidence = 0;
+
+        foreach ( $qa_pairs as $qa_pair ) {
+            $confidence = $qa_pair['confidence'] ?? 0;
+
+            if ( $confidence > $highest_confidence ) {
+                $highest_confidence = $confidence;
+                $best_match = $qa_pair;
+            }
+        }
+
+        if ( ! $best_match ) {
+            return;
+        }
+
+        // Auto-populate fields if not locked
+        if ( 'yes' !== $settings['lock_question'] && empty( $settings['question'] ) ) {
+            $this->set_settings( 'question', $best_match['question'] );
+        }
+
+        if ( 'yes' !== $settings['lock_answer'] && empty( $settings['answer'] ) ) {
+            $this->set_settings( 'answer', $best_match['answer'] );
+        }
+
+        if ( 'yes' !== $settings['lock_confidence'] ) {
+            $this->set_settings( 'confidence_score', $best_match['confidence'] );
+        }
+
+        if ( 'yes' !== $settings['lock_citations'] && empty( $settings['citations'] ) ) {
+            $this->set_settings( 'citations', $best_match['citations'] ?? array() );
+        }
+    }
+
+    /**
+     * Format confidence score for display
+     */
+    protected function format_confidence_score( $score ) {
+        $score = floatval( $score );
+
+        if ( $score >= 0.9 ) {
+            return 'High (' . round( $score * 100 ) . '%)';
+        } elseif ( $score >= 0.7 ) {
+            return 'Medium (' . round( $score * 100 ) . '%)';
+        } else {
+            return 'Low (' . round( $score * 100 ) . '%)';
+        }
+    }
 
     /**
      * Get widget title
@@ -96,6 +177,42 @@ class AnswerCard extends Widget_Base {
         );
 
         $this->add_control(
+            'bullets',
+            array(
+                'label' => __( 'Bullet Points', 'khm-seo' ),
+                'type' => Controls_Manager::REPEATER,
+                'fields' => array(
+                    array(
+                        'name' => 'bullet',
+                        'label' => __( 'Bullet Point', 'khm-seo' ),
+                        'type' => Controls_Manager::TEXT,
+                        'placeholder' => __( 'Enter bullet point', 'khm-seo' ),
+                        'default' => '',
+                    ),
+                ),
+                'title_field' => '{{{ bullet }}}',
+            )
+        );
+
+        $this->add_control(
+            'citations',
+            array(
+                'label' => __( 'Citations', 'khm-seo' ),
+                'type' => Controls_Manager::REPEATER,
+                'fields' => array(
+                    array(
+                        'name' => 'citation',
+                        'label' => __( 'Citation', 'khm-seo' ),
+                        'type' => Controls_Manager::TEXT,
+                        'placeholder' => __( 'Enter citation URL or text', 'khm-seo' ),
+                        'default' => '',
+                    ),
+                ),
+                'title_field' => '{{{ citation }}}',
+            )
+        );
+
+        $this->add_control(
             'entity_id',
             array(
                 'label' => __( 'Related Entity', 'khm-seo' ),
@@ -126,6 +243,150 @@ class AnswerCard extends Widget_Base {
                 'condition' => array(
                     'entity_id!' => '',
                     'show_entity_link' => 'yes',
+                ),
+            )
+        );
+
+        $this->add_control(
+            'show_actions',
+            array(
+                'label' => __( 'Show Action Buttons', 'khm-seo' ),
+                'type' => Controls_Manager::SWITCHER,
+                'default' => '',
+                'description' => __( 'Show save to notes and email buttons', 'khm-seo' ),
+            )
+        );
+
+        $this->add_control(
+            'actions',
+            array(
+                'label' => __( 'Actions', 'khm-seo' ),
+                'type' => Controls_Manager::SELECT2,
+                'multiple' => true,
+                'options' => array(
+                    'save_notes' => __( 'Save to Notes', 'khm-seo' ),
+                    'email' => __( 'Email Card', 'khm-seo' ),
+                ),
+                'default' => array( 'save_notes', 'email' ),
+                'condition' => array(
+                    'show_actions' => 'yes',
+                ),
+            )
+        );
+
+        // Auto-population Section
+        $this->start_controls_section(
+            'auto_population_section',
+            array(
+                'label' => __( 'Auto-Population', 'khm-seo' ),
+                'tab' => Controls_Manager::TAB_CONTENT,
+            )
+        );
+
+        $this->add_control(
+            'enable_auto_population',
+            array(
+                'label' => __( 'Enable Auto-Population', 'khm-seo' ),
+                'type' => Controls_Manager::SWITCHER,
+                'default' => '',
+                'description' => __( 'Automatically populate Q/A from page headings and content', 'khm-seo' ),
+            )
+        );
+
+        $this->add_control(
+            'auto_populate_from',
+            array(
+                'label' => __( 'Populate From', 'khm-seo' ),
+                'type' => Controls_Manager::SELECT,
+                'default' => 'nearest_heading',
+                'options' => array(
+                    'nearest_heading' => __( 'Nearest H2/H3 Heading', 'khm-seo' ),
+                    'specific_heading' => __( 'Specific Heading', 'khm-seo' ),
+                    'custom_content' => __( 'Custom Content Block', 'khm-seo' ),
+                ),
+                'condition' => array(
+                    'enable_auto_population' => 'yes',
+                ),
+            )
+        );
+
+        $this->add_control(
+            'specific_heading',
+            array(
+                'label' => __( 'Heading Text', 'khm-seo' ),
+                'type' => Controls_Manager::TEXT,
+                'placeholder' => __( 'Enter heading to populate from', 'khm-seo' ),
+                'condition' => array(
+                    'enable_auto_population' => 'yes',
+                    'auto_populate_from' => 'specific_heading',
+                ),
+            )
+        );
+
+        $this->add_control(
+            'lock_question',
+            array(
+                'label' => __( 'Lock Question', 'khm-seo' ),
+                'type' => Controls_Manager::SWITCHER,
+                'default' => '',
+                'description' => __( 'Prevent auto-updates to the question field', 'khm-seo' ),
+                'condition' => array(
+                    'enable_auto_population' => 'yes',
+                ),
+            )
+        );
+
+        $this->add_control(
+            'lock_citations',
+            array(
+                'label' => __( 'Lock Citations', 'khm-seo' ),
+                'type' => Controls_Manager::SWITCHER,
+                'default' => '',
+                'description' => __( 'Prevent auto-updates to the citations field', 'khm-seo' ),
+                'condition' => array(
+                    'enable_auto_population' => 'yes',
+                ),
+            )
+        );
+
+        $this->add_control(
+            'confidence_score',
+            array(
+                'label' => __( 'Confidence Score', 'khm-seo' ),
+                'type' => Controls_Manager::NUMBER,
+                'min' => 0,
+                'max' => 1,
+                'step' => 0.01,
+                'default' => 0.8,
+                'description' => __( 'Confidence score from content analysis (0-1)', 'khm-seo' ),
+                'condition' => array(
+                    'enable_auto_population' => 'yes',
+                ),
+            )
+        );
+
+        $this->add_control(
+            'lock_confidence',
+            array(
+                'label' => __( 'Lock Confidence Score', 'khm-seo' ),
+                'type' => Controls_Manager::SWITCHER,
+                'default' => '',
+                'description' => __( 'Prevent auto-updates to the confidence score', 'khm-seo' ),
+                'condition' => array(
+                    'enable_auto_population' => 'yes',
+                ),
+            )
+        );
+
+        $this->add_control(
+            'auto_populate_now',
+            array(
+                'label' => __( 'Populate Now', 'khm-seo' ),
+                'type' => Controls_Manager::BUTTON,
+                'text' => __( 'Generate Q/A', 'khm-seo' ),
+                'event' => 'khm:populate_answer_card',
+                'condition' => array(
+                    'enable_auto_population' => 'yes',
                 ),
             )
         );
@@ -227,6 +488,11 @@ class AnswerCard extends Widget_Base {
     protected function render() {
         $settings = $this->get_settings_for_display();
 
+        // Auto-populate if enabled and not locked
+        if ( 'yes' === $settings['enable_auto_population'] && \Elementor\Plugin::$instance->editor->is_edit_mode() ) {
+            $this->auto_populate_content( $settings );
+        }
+
         $entity_url = '';
         $entity_title = '';
         if ( ! empty( $settings['entity_id'] ) ) {
@@ -237,32 +503,81 @@ class AnswerCard extends Widget_Base {
             }
         }
 
+        // Generate stable anchor ID
+        $anchor_id = 'khm-answer-' . substr( md5( $settings['question'] . $this->get_id() ), 0, 8 );
+
         $this->add_render_attribute( 'card', 'class', 'khm-answer-card' );
+        $this->add_render_attribute( 'summary', 'class', 'khm-answer-card-summary' );
         $this->add_render_attribute( 'question', 'class', 'khm-answer-card-question' );
         $this->add_render_attribute( 'answer', 'class', 'khm-answer-card-answer' );
 
+        // Add collapsible attributes
+        $this->add_render_attribute( 'card', 'id', $anchor_id );
+
         ?>
         <div <?php echo $this->get_render_attribute_string( 'card' ); ?>>
-            <?php if ( ! empty( $settings['question'] ) ) : ?>
-                <h3 <?php echo $this->get_render_attribute_string( 'question' ); ?>>
-                    <?php echo esc_html( $settings['question'] ); ?>
-                </h3>
-            <?php endif; ?>
+            <details class="khm-answer-card-details">
+                <summary <?php echo $this->get_render_attribute_string( 'summary' ); ?>>
+                    <?php if ( ! empty( $settings['question'] ) ) : ?>
+                        <span <?php echo $this->get_render_attribute_string( 'question' ); ?>>
+                            <?php echo esc_html( $settings['question'] ); ?>
+                        </span>
+                    <?php endif; ?>
 
-            <?php if ( ! empty( $settings['answer'] ) ) : ?>
-                <div <?php echo $this->get_render_attribute_string( 'answer' ); ?>>
-                    <?php echo wp_kses_post( $settings['answer'] ); ?>
-                </div>
-            <?php endif; ?>
+                    <?php if ( 'yes' === $settings['show_confidence_score'] && ! empty( $settings['confidence_score'] ) ) : ?>
+                        <span class="khm-confidence-score" data-score="<?php echo esc_attr( $settings['confidence_score'] ); ?>">
+                            <?php echo esc_html( $this->format_confidence_score( $settings['confidence_score'] ) ); ?>
+                        </span>
+                    <?php endif; ?>
+                </summary>
 
-            <?php if ( ! empty( $entity_url ) && 'yes' === $settings['show_entity_link'] ) : ?>
-                <div class="khm-answer-card-entity-link">
-                    <a href="<?php echo esc_url( $entity_url ); ?>" class="khm-entity-link">
-                        <?php echo esc_html( $settings['entity_link_text'] ); ?>
-                        <span class="khm-entity-title"><?php echo esc_html( $entity_title ); ?></span>
-                    </a>
+                <div class="khm-answer-card-content">
+                    <?php if ( ! empty( $settings['answer'] ) ) : ?>
+                        <div <?php echo $this->get_render_attribute_string( 'answer' ); ?>>
+                            <?php echo wp_kses_post( $settings['answer'] ); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ( ! empty( $settings['bullets'] ) && is_array( $settings['bullets'] ) ) : ?>
+                        <ul class="khm-answer-card-bullets">
+                            <?php foreach ( $settings['bullets'] as $bullet ) : ?>
+                                <li><?php echo esc_html( $bullet ); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+
+                    <?php if ( ! empty( $settings['citations'] ) && is_array( $settings['citations'] ) ) : ?>
+                        <div class="khm-answer-card-citations">
+                            <strong><?php _e( 'Sources:', 'khm-seo' ); ?></strong>
+                            <ul>
+                                <?php foreach ( $settings['citations'] as $citation ) : ?>
+                                    <li><?php echo esc_html( $citation ); ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ( ! empty( $entity_url ) && 'yes' === $settings['show_entity_link'] ) : ?>
+                        <div class="khm-answer-card-entity-link">
+                            <a href="<?php echo esc_url( $entity_url ); ?>" class="khm-entity-link">
+                                <?php echo esc_html( $settings['entity_link_text'] ); ?>
+                                <span class="khm-entity-title"><?php echo esc_html( $entity_title ); ?></span>
+                            </a>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ( ! empty( $settings['actions'] ) && 'yes' === $settings['show_actions'] ) : ?>
+                        <div class="khm-answer-card-actions">
+                            <button class="khm-action-btn khm-save-notes" data-card-id="<?php echo esc_attr( $anchor_id ); ?>">
+                                <?php _e( 'Save to Notes', 'khm-seo' ); ?>
+                            </button>
+                            <button class="khm-action-btn khm-email-card" data-card-id="<?php echo esc_attr( $anchor_id ); ?>">
+                                <?php _e( 'Email', 'khm-seo' ); ?>
+                            </button>
+                        </div>
+                    <?php endif; ?>
                 </div>
-            <?php endif; ?>
+            </details>
         </div>
         <?php
     }

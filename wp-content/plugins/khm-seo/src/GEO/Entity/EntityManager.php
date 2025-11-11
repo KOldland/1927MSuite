@@ -95,6 +95,14 @@ class EntityManager {
     public function get_table_name( $table ) {
         return $this->tables->get_table_name( $table );
     }
+
+    /**
+     * Get content analyzer instance
+     * @return \KHM_SEO\GEO\Content\ContentAnalyzer
+     */
+    public function get_content_analyzer() {
+        return $this->content_analyzer;
+    }
     
     /**
      * @var EntityTables Database tables manager
@@ -140,11 +148,17 @@ class EntityManager {
     private $auto_linker;
 
     /**
+     * @var \KHM_SEO\GEO\Content\ContentAnalyzer Content analyzer instance
+     */
+    private $content_analyzer;
+
+    /**
      * Constructor
      */
     public function __construct() {
         $this->tables = new EntityTables();
         $this->auto_linker = new \KHM_SEO\GEO\AutoLink\AutoLinker( $this );
+        $this->content_analyzer = new \KHM_SEO\GEO\Content\ContentAnalyzer( $this );
         $this->init_hooks();
     }
     
