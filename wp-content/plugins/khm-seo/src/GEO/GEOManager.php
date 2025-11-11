@@ -16,6 +16,10 @@ use KHM_SEO\GEO\Entity\EntityManager;
 use KHM_SEO\GEO\Database\EntityTables;
 use KHM_SEO\GEO\API\EntityAPI;
 use KHM_SEO\GEO\Validation\EntityValidator;
+use KHM_SEO\GEO\Validation\ValidationManager;
+use KHM_SEO\GEO\Measurement\MeasurementManager;
+use KHM_SEO\GEO\Measurement\MeasurementTables;
+use KHM_SEO\GEO\Schema\SchemaDedupManager;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly
@@ -201,6 +205,26 @@ class GEOManager {
     private $config = array();
     
     /**
+     * @var ValidationManager Pre-publish validation manager
+     */
+    private $validation_manager;
+    
+    /**
+     * @var MeasurementManager Analytics and tracking manager
+     */
+    private $measurement_manager;
+    
+    /**
+     * @var MeasurementTables Measurement database tables manager
+     */
+    private $measurement_tables;
+    
+    /**
+     * @var SchemaDedupManager Schema deduplication manager
+     */
+    private $schema_dedup_manager;
+    
+    /**
      * Constructor
      */
     public function __construct() {
@@ -224,6 +248,18 @@ class GEOManager {
 
         // Initialize validator
         $this->entity_validator = new EntityValidator( $this->entity_manager );
+        
+        // Initialize validation manager
+        $this->validation_manager = new ValidationManager( $this->entity_manager );
+        
+        // Initialize measurement tables
+        $this->measurement_tables = new MeasurementTables();
+        
+        // Initialize measurement manager
+        $this->measurement_manager = new MeasurementManager( $this->entity_manager );
+        
+        // Initialize schema deduplication manager
+        $this->schema_dedup_manager = new SchemaDedupManager( $this->entity_manager );
     }
     
     /**
@@ -261,6 +297,10 @@ class GEOManager {
 
         // Validation hooks
         add_filter( 'wp_insert_post_data', array( $this->entity_validator, 'pre_publish_validation' ), 10, 2 );
+        
+        // Pre-publish validation hooks
+        add_action( 'save_post', array( $this->validation_manager, 'validate_on_save' ), 20 );
+        add_action( 'wp_ajax_khm_geo_validate_answer_card', array( $this->validation_manager, 'ajax_validate_answer_card' ) );
     }
     
     /**
@@ -778,6 +818,42 @@ class GEOManager {
      */
     public function get_entity_tables() {
         return $this->entity_tables;
+    }
+    
+    /**
+     * Get validation manager instance
+     * 
+     * @return ValidationManager
+     */
+    public function get_validation_manager() {
+        return $this->validation_manager;
+    }
+    
+    /**
+     * Get measurement manager instance
+     * 
+     * @return MeasurementManager
+     */
+    public function get_measurement_manager() {
+        return $this->measurement_manager;
+    }
+    
+    /**
+     * Get measurement tables instance
+     * 
+     * @return MeasurementTables
+     */
+    public function get_measurement_tables() {
+        return $this->measurement_tables;
+    }
+    
+    /**
+     * Get schema deduplication manager instance
+     * 
+     * @return SchemaDedupManager
+     */
+    public function get_schema_dedup_manager() {
+        return $this->schema_dedup_manager;
     }
     
     /**
