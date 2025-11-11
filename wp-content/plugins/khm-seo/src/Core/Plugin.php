@@ -147,9 +147,16 @@ final class Plugin {
     /**
      * GEO (Generative Engine Optimization) manager instance.
      *
-     * @var GEO\GEOManager|null
+     * @var \KHM_SEO\GEO\GEOManager|null
      */
     public $geo = null;
+
+    /**
+     * Elementor integration instance.
+     *
+     * @var \KHM_SEO\Elementor\ElementorIntegration|null
+     */
+    public $elementor = null;
 
     /**
      * Get plugin instance.
@@ -247,6 +254,11 @@ final class Plugin {
         
         // Initialize GEO (Generative Engine Optimization) manager
         $this->geo = new \KHM_SEO\GEO\GEOManager();
+
+        // Initialize Elementor integration
+        if ( did_action( 'elementor/loaded' ) ) {
+            $this->elementor = new \KHM_SEO\Elementor\ElementorIntegration( $this->geo );
+        }
     }
 
     /**
