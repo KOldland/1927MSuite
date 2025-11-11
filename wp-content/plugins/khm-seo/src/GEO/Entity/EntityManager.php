@@ -133,12 +133,18 @@ class EntityManager {
      * @var array Cache for frequently accessed entities
      */
     private $entity_cache = array();
-    
+
+    /**
+     * @var \KHM_SEO\GEO\AutoLink\AutoLinker Auto-linker instance
+     */
+    private $auto_linker;
+
     /**
      * Constructor
      */
     public function __construct() {
         $this->tables = new EntityTables();
+        $this->auto_linker = new \KHM_SEO\GEO\AutoLink\AutoLinker( $this );
         $this->init_hooks();
     }
     
@@ -730,39 +736,20 @@ class EntityManager {
      * @return string Modified content
      */
     public function auto_link_entities( $content ) {
-        // Basic implementation - this would be expanded with sophisticated parsing
         global $post;
-        
+
         if ( ! $post || is_admin() ) {
             return $content;
         }
-        
-        // Get entities that should be auto-linked
-        $linkable_entities = $this->get_linkable_entities();
-        
-        foreach ( $linkable_entities as $entity ) {
-            $link_rules = $this->get_entity_link_rules( $entity->id );
-            
-            if ( ! $link_rules || $link_rules->link_mode === 'never' ) {
-                continue;
-            }
-            
-            // Simple first-occurrence replacement (would need more sophisticated parsing)
-            if ( $link_rules->link_mode === 'first_only' && ! empty( $link_rules->internal_url ) ) {
-                $pattern = '/\b' . preg_quote( $entity->canonical, '/' ) . '\b/i';
-                $replacement = sprintf( 
-                    '<a href="%s"%s%s>%s</a>',
-                    esc_url( $link_rules->internal_url ),
-                    $link_rules->nofollow ? ' rel="nofollow"' : '',
-                    $link_rules->new_tab ? ' target="_blank"' : '',
-                    $entity->canonical
-                );
-                
-                $content = preg_replace( $pattern, $replacement, $content, 1 );
-            }
-        }
-        
-        return $content;
+
+        // Configure auto-linker based on global settings
+        $config = array(
+            'max_auto_links_per_post' => get_option( 'khm_geo_max_auto_links', 10 ),
+            'auto_linking_mode' => get_option( 'khm_geo_auto_linking_mode', 'first_only' )
+        );
+        $this->auto_linker->set_config( $config );
+
+        return $this->auto_linker->process_content( $content, $post->ID );
     }
     
     /**
