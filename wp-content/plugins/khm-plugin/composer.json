@@ -26,7 +26,8 @@
     }
   },
   "bin": [
-    "bin/migrate.php"
+    "bin/migrate.php",
+    "bin/seed_cp_weights.php"
   ],
   "minimum-stability": "dev",
   "license": "MIT",
