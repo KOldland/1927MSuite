@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.core.logging import setup_logging
 from app.db.session import engine
 from app.db.base import Base
+from app.services.scheduler_service import scheduler_service
 
 # Setup structured logging
 setup_logging()
@@ -33,7 +34,15 @@ async def lifespan(app: FastAPI):
 
     logger.info("Database tables created/verified")
 
+    # Start the scheduler service
+    scheduler_service.start()
+    logger.info("Scheduler service started")
+
     yield
+
+    # Stop the scheduler service
+    scheduler_service.stop()
+    logger.info("Scheduler service stopped")
 
     logger.info("Shutting down KHM GEO Tracker")
 

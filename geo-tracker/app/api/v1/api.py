@@ -4,7 +4,7 @@ Main API router for v1 endpoints
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import posts, runs, reports, clients
+from app.api.v1.endpoints import posts, runs, reports, clients, retention
 
 api_router = APIRouter()
 
@@ -28,4 +28,9 @@ api_router.include_router(
     clients.router,
     prefix="/clients",
     tags=["clients"]
+)
+api_router.include_router(
+    retention.router,
+    prefix="/retention",
+    tags=["retention"]
 )

@@ -43,6 +43,7 @@ structlog==23.2.0
 python-dotenv==1.0.0
 pydantic[email]==2.5.0
 jinja2==3.1.2
+APScheduler==3.10.4
 
 # Testing
 pytest==7.4.3

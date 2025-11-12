@@ -159,6 +159,13 @@ final class Plugin {
     public $elementor = null;
 
     /**
+     * Tracker connector instance.
+     *
+     * @var \KHM_SEO\API\TrackerConnector|null
+     */
+    public $tracker = null;
+
+    /**
      * Get plugin instance.
      *
      * @return Plugin
@@ -259,6 +266,9 @@ final class Plugin {
         if ( did_action( 'elementor/loaded' ) ) {
             $this->elementor = new \KHM_SEO\Elementor\ElementorIntegration( $this->geo );
         }
+
+        // Initialize tracker connector
+        $this->tracker = new \KHM_SEO\API\TrackerConnector();
     }
 
     /**
