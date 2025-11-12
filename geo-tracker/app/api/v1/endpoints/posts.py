@@ -18,8 +18,9 @@ logger = structlog.get_logger(__name__)
 @router.post("/sync", response_model=schemas.PostSyncResponse)
 async def sync_posts(
     sync_data: schemas.PostSyncRequest,
-    db: AsyncSession = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_tenant_db),
     current_client: schemas.Client = Depends(deps.get_current_client),
+    _: None = Depends(deps.check_rate_limit),
 ) -> Any:
     """
     Sync posts, entities, and AnswerCards from WordPress plugin

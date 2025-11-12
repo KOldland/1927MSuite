@@ -3,14 +3,15 @@ Dependency injection utilities
 """
 
 from typing import Generator
+import time
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.db.session import async_session_factory
+from app.db.session import get_tenant_session
 from app import schemas
-from app.services.jwt_service import jwt_service
+from app.services.rate_limit_service import rate_limiter
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -20,9 +21,20 @@ security = HTTPBearer()
 
 async def get_db() -> Generator[AsyncSession, None, None]:
     """
-    Dependency for database session
+    Dependency for database session (legacy - use get_tenant_db for new code)
     """
-    async with async_session_factory() as session:
+    async with get_tenant_session() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+
+
+async def get_tenant_db(current_client: schemas.Client = Depends(get_current_client)) -> Generator[AsyncSession, None, None]:
+    """
+    Dependency for tenant-scoped database session with RLS enabled
+    """
+    async with get_tenant_session(current_client.id) as session:
         try:
             yield session
         finally:
@@ -88,3 +100,29 @@ def get_current_client(
     except Exception as e:
         logger.error(f"Authentication failed: {str(e)}")
         raise credentials_exception
+
+
+async def check_rate_limit(current_client: schemas.Client = Depends(get_current_client)):
+    """
+    Check rate limit for the current client
+
+    Raises HTTPException if rate limited
+    """
+    client_key = f"client_{current_client.id}"
+
+    allowed = await rate_limiter.is_allowed(client_key)
+    if not allowed:
+        reset_time = await rate_limiter.get_reset_time(client_key)
+        reset_in = int(reset_time - time.time())
+
+        logger.warning(
+            "Rate limit exceeded",
+            client_id=current_client.id,
+            reset_in_seconds=reset_in,
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded. Try again in {reset_in} seconds.",
+            headers={"Retry-After": str(reset_in)},
+        )

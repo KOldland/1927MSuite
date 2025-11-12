@@ -52,11 +52,11 @@ async def register_client_key(client_id: int, key_data: Dict[str, str]):
     Register a client's public key
 
     WordPress sites call this endpoint to register their public key
-    for JWT verification.
+    for JWT verification. This triggers key rotation and management.
     """
     try:
         public_key_pem = key_data.get("public_key")
-        kid = key_data.get("kid", f"key_{client_id}_1")
+        private_key_pem = key_data.get("private_key")  # Optional for signing
 
         if not public_key_pem:
             raise HTTPException(
@@ -64,17 +64,21 @@ async def register_client_key(client_id: int, key_data: Dict[str, str]):
                 detail="public_key is required"
             )
 
-        # Create JWKS entry
-        jwks_entry = jwt_service.create_jwks_entry(public_key_pem, kid)
+        # Register the key with automatic rotation management
+        kid = jwt_service.register_client_key(
+            client_id=client_id,
+            public_key_pem=public_key_pem,
+            private_key_pem=private_key_pem
+        )
 
-        # TODO: Store in database
-        # For now, just cache it
-        jwt_service._jwks_cache[f"jwks_{client_id}"] = {"keys": [jwks_entry]}
-
-        return {"message": "Key registered successfully", "kid": kid}
+        return {
+            "message": "Key registered successfully",
+            "kid": kid,
+            "expires_in_minutes": 15
+        }
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to register key"
+            detail=f"Failed to register key: {str(e)}"
         )

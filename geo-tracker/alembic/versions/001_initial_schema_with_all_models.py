@@ -232,6 +232,91 @@ def upgrade() -> None:
     op.create_index('idx_answer_card_active', 'answer_cards', ['is_active'], unique=False)
     op.create_index('idx_answer_card_priority', 'answer_cards', ['priority'], unique=False)
 
+    # Enable Row Level Security on all tenant-scoped tables
+    op.execute("ALTER TABLE clients ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE queries ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE runs ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE answers ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE citations ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE entities ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE similarities ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE metrics ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE posts ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE wordpress_entities ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE answer_cards ENABLE ROW LEVEL SECURITY")
+
+    # Create tenant isolation policies
+    # Clients table - users can only see their own client record
+    op.execute("""
+        CREATE POLICY tenant_isolation_clients ON clients
+        USING (id = current_setting('app.current_client_id', '0')::int)
+    """)
+
+    # All other tables - scope by client_id
+    op.execute("""
+        CREATE POLICY tenant_isolation_queries ON queries
+        USING (client_id = current_setting('app.current_client_id', '0')::int)
+    """)
+
+    op.execute("""
+        CREATE POLICY tenant_isolation_runs ON runs
+        USING (client_id = current_setting('app.current_client_id', '0')::int)
+    """)
+
+    op.execute("""
+        CREATE POLICY tenant_isolation_answers ON answers
+        USING (run_id IN (
+            SELECT id FROM runs WHERE client_id = current_setting('app.current_client_id', '0')::int
+        ))
+    """)
+
+    op.execute("""
+        CREATE POLICY tenant_isolation_citations ON citations
+        USING (answer_id IN (
+            SELECT a.id FROM answers a
+            JOIN runs r ON a.run_id = r.id
+            WHERE r.client_id = current_setting('app.current_client_id', '0')::int
+        ))
+    """)
+
+    op.execute("""
+        CREATE POLICY tenant_isolation_entities ON entities
+        USING (answer_id IN (
+            SELECT a.id FROM answers a
+            JOIN runs r ON a.run_id = r.id
+            WHERE r.client_id = current_setting('app.current_client_id', '0')::int
+        ))
+    """)
+
+    op.execute("""
+        CREATE POLICY tenant_isolation_similarities ON similarities
+        USING (answer_id IN (
+            SELECT a.id FROM answers a
+            JOIN runs r ON a.run_id = r.id
+            WHERE r.client_id = current_setting('app.current_client_id', '0')::int
+        ))
+    """)
+
+    op.execute("""
+        CREATE POLICY tenant_isolation_metrics ON metrics
+        USING (client_id = current_setting('app.current_client_id', '0')::int)
+    """)
+
+    op.execute("""
+        CREATE POLICY tenant_isolation_posts ON posts
+        USING (client_id = current_setting('app.current_client_id', '0')::int)
+    """)
+
+    op.execute("""
+        CREATE POLICY tenant_isolation_wp_entities ON wordpress_entities
+        USING (client_id = current_setting('app.current_client_id', '0')::int)
+    """)
+
+    op.execute("""
+        CREATE POLICY tenant_isolation_answer_cards ON answer_cards
+        USING (client_id = current_setting('app.current_client_id', '0')::int)
+    """)
+
 
 def downgrade() -> None:
     # Drop tables in reverse order (due to foreign key constraints)
