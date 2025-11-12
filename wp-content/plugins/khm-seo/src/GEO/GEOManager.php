@@ -22,6 +22,8 @@ use KHM_SEO\GEO\Measurement\MeasurementTables;
 use KHM_SEO\GEO\Schema\SchemaDedupManager;
 use KHM_SEO\GEO\Series\SeriesManager;
 use KHM_SEO\GEO\Series\SeriesTables;
+use KHM_SEO\GEO\Export\ExportManager;
+use KHM_SEO\GEO\Export\ExportTables;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly
@@ -237,6 +239,16 @@ class GEOManager {
     private $series_tables;
     
     /**
+     * @var ExportManager Data export functionality
+     */
+    private $export_manager;
+    
+    /**
+     * @var ExportTables Export database tables manager
+     */
+    private $export_tables;
+    
+    /**
      * Constructor
      */
     public function __construct() {
@@ -279,6 +291,12 @@ class GEOManager {
         // Initialize series manager
         $this->series_manager = new SeriesManager( $this->entity_manager );
         $this->series_manager->set_series_tables( $this->series_tables );
+        
+        // Initialize export tables
+        $this->export_tables = new ExportTables();
+        
+        // Initialize export manager
+        $this->export_manager = new ExportManager( $this->entity_manager, $this->series_manager, $this->measurement_manager );
     }
 
     /**
@@ -891,6 +909,24 @@ class GEOManager {
      */
     public function get_series_tables() {
         return $this->series_tables;
+    }
+    
+    /**
+     * Get export manager
+     * 
+     * @return ExportManager Export manager instance
+     */
+    public function get_export_manager() {
+        return $this->export_manager;
+    }
+    
+    /**
+     * Get export tables
+     * 
+     * @return ExportTables Export tables instance
+     */
+    public function get_export_tables() {
+        return $this->export_tables;
     }
     
     /**
