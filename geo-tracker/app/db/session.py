@@ -10,8 +10,12 @@ from sqlalchemy import text
 from app.core.config import settings
 
 # Create async engine
+database_url = settings.sql_database_url
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
 engine = create_async_engine(
-    settings.sql_database_url.replace("postgresql://", "postgresql+asyncpg://"),
+    database_url.replace("postgresql://", "postgresql+asyncpg://"),
     poolclass=StaticPool,
     echo=settings.DEBUG,
     future=True,
