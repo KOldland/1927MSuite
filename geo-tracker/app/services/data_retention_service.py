@@ -55,8 +55,9 @@ class DataRetentionService:
         }
 
         try:
-            # Get all active clients
-            async with get_tenant_session() as session:
+            # Get all active clients (use global session, not tenant-scoped)
+            from app.db.session import async_session_factory
+            async with async_session_factory() as session:
                 result = await session.execute(
                     select(models.Client.id, models.Client.name)
                     .where(models.Client.is_active == True)
