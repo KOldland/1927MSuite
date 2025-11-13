@@ -104,6 +104,9 @@ class Settings(BaseSettings):
     # Slack Alerts
     SLACK_WEBHOOK_URL: Optional[str] = None
 
+    # Timezone
+    TIMEZONE: str = "UTC"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

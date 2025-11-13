@@ -241,7 +241,7 @@ class FourAIngestionController {
 	 * @return true|WP_Error
 	 */
 	private function authorize_request( WP_REST_Request $request ) {
-		$token = (string) get_option( 'khm_4a_ingest_token', '' );
+		$token = $this->get_ingest_token();
 		if ( empty( $token ) ) {
 			return true;
 		}
@@ -397,6 +397,24 @@ class FourAIngestionController {
 		}
 
 		return 'article_partial';
+	}
+
+	/**
+	 * Resolve the configured ingestion token (constant > env > option).
+	 *
+	 * @return string
+	 */
+	private function get_ingest_token(): string {
+		if ( defined( 'KHM_4A_INGEST_TOKEN' ) && KHM_4A_INGEST_TOKEN ) {
+			return (string) KHM_4A_INGEST_TOKEN;
+		}
+
+		$env = getenv( 'KHM_4A_INGEST_TOKEN' );
+		if ( ! empty( $env ) ) {
+			return (string) $env;
+		}
+
+		return (string) get_option( 'khm_4a_ingest_token', '' );
 	}
 
 	private function map_touchpoint_from_esp( string $event_type ): string {
