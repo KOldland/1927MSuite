@@ -40,6 +40,11 @@ def run_migrations_offline() -> None:
     """
     # Use DATABASE_URL from environment if available, otherwise use config
     url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+
+    # Convert postgres:// to postgresql:// for SQLAlchemy compatibility
+    if url and url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -60,6 +65,10 @@ def run_migrations_online() -> None:
     """
     # Use DATABASE_URL from environment if available, otherwise use config
     database_url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+
+    # Convert postgres:// to postgresql:// for SQLAlchemy compatibility
+    if database_url and database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
 
     # Create connectable using the database URL
     from sqlalchemy import create_engine
