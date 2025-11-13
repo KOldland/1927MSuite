@@ -37,7 +37,12 @@ function main(array $argv): int {
         } else {
             echo "Dry run mode (no changes will be made)\n";
         }
-        
+
+        if (isset($results['status']) && count($results) === 1) {
+            echo "\nStatus: {$results['status']}\n";
+            return 0;
+        }
+
         foreach ($results as $file => $result) {
             echo "\n$file: {$result['status']}\n";
             if (isset($result['sql'])) {

@@ -34,13 +34,13 @@ class CpWeightSeeder {
             throw new \RuntimeException( 'Seed file must decode to an array of weight objects.' );
         }
 
+        if ( $truncate ) {
+            $this->pdo->exec( 'TRUNCATE TABLE `cp_weights`' );
+        }
+
         $this->pdo->beginTransaction();
 
         try {
-            if ( $truncate ) {
-                $this->pdo->exec( 'TRUNCATE TABLE `cp_weights`' );
-            }
-
             $stmt = $this->pdo->prepare(
                 "INSERT INTO `cp_weights`
                     (`touchpoint`,`stage_default`,`category`,`base_weight`,`description`,`is_active`,`created_at`,`updated_at`)
@@ -69,7 +69,9 @@ class CpWeightSeeder {
                 'rows_processed' => $processed,
             ];
         } catch ( \Throwable $e ) {
-            $this->pdo->rollBack();
+            if ( $this->pdo->inTransaction() ) {
+                $this->pdo->rollBack();
+            }
             throw $e;
         }
     }

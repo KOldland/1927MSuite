@@ -341,6 +341,10 @@ register_deactivation_hook(__FILE__, function () {
     if ( class_exists('KHM\\Scheduled\\Scheduler') ) {
         KHM\Scheduled\Scheduler::deactivate();
     }
+    $timestamp = wp_next_scheduled('khm_4a_hourly_recompute');
+    if ( $timestamp ) {
+        wp_unschedule_event($timestamp, 'khm_4a_hourly_recompute');
+    }
 });
 
 // If a Plugin class exists, call its init method
@@ -373,7 +377,29 @@ add_action('rest_api_init', function () {
     if ( class_exists('KHM\\Rest\\InvoiceController') ) {
         ( new KHM\Rest\InvoiceController() )->register();
     }
+    // Register 4A ingestion routes
+    if ( class_exists('KHM\\Rest\\FourAIngestionController') ) {
+        ( new KHM\Rest\FourAIngestionController() )->register();
+    }
 });
+
+// Schedule hourly 4A scoring cron.
+add_action('init', function () {
+    if ( ! wp_next_scheduled('khm_4a_hourly_recompute') ) {
+        wp_schedule_event(time(), 'hourly', 'khm_4a_hourly_recompute');
+    }
+});
+
+add_action('khm_4a_hourly_recompute', function () {
+    if ( class_exists('KHM\\Services\\FourAScoringService') ) {
+        ( new KHM\Services\FourAScoringService() )->run();
+    }
+});
+
+// CLI command.
+if ( defined('WP_CLI') && WP_CLI && class_exists('KHM\\Cli\\FourAScoreCommand') ) {
+    WP_CLI::add_command('khm-4a', 'KHM\\Cli\\FourAScoreCommand');
+}
 
 // Register webhook email notifications
 add_action('init', function () {

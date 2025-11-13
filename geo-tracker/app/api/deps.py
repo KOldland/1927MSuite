@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.db.session import get_tenant_session
 from app import schemas
 from app.services.rate_limit_service import rate_limiter
+from app.services.jwt_service import jwt_service
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -24,17 +25,6 @@ async def get_db() -> Generator[AsyncSession, None, None]:
     Dependency for database session (legacy - use get_tenant_db for new code)
     """
     async with get_tenant_session() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
-
-
-async def get_tenant_db(current_client: schemas.Client = Depends(get_current_client)) -> Generator[AsyncSession, None, None]:
-    """
-    Dependency for tenant-scoped database session with RLS enabled
-    """
-    async with get_tenant_session(current_client.id) as session:
         try:
             yield session
         finally:
@@ -100,6 +90,17 @@ def get_current_client(
     except Exception as e:
         logger.error(f"Authentication failed: {str(e)}")
         raise credentials_exception
+
+
+async def get_tenant_db(current_client: schemas.Client = Depends(get_current_client)) -> Generator[AsyncSession, None, None]:
+    """
+    Dependency for tenant-scoped database session with RLS enabled
+    """
+    async with get_tenant_session(current_client.id) as session:
+        try:
+            yield session
+        finally:
+            await session.close()
 
 
 async def check_rate_limit(current_client: schemas.Client = Depends(get_current_client)):

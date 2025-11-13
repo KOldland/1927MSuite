@@ -213,3 +213,11 @@ Wireframe reference: `wp-admin/images/4a-dashboard-wireframe.png` (to be created
 5. Develop admin UI React components (Hot Accounts table, Score Trend chart).  
 6. QA stage inference with sampled accounts to reach ≥80% target.
 
+---
+
+## Appendix – Scoring Job Implementation Notes
+
+- `wp khm-4a recompute --window=7200` uses `FourAScoringService` to pull all events with `ingested_at` inside the window (default 2h), re-score the affected people/companies using the deterministic formula, and upsert into `cp_scores_person` / `cp_scores_company`.
+- An hourly WP cron hook (`khm_4a_hourly_recompute`) is scheduled on plugin load to call the same service so the dashboard stays up to date even when WP-CLI isn’t available.
+- Stage inference honors PoS (Point-of-Sale) touchpoints by automatically promoting to Acceptance when those events occur inside the 45-day window.
+- Company `hot_flag` flips on when score ≥120 and there are ≥3 distinct engaged contacts (events in last 21 days). Engaged counts, tier flags, and timestamps are maintained directly in the rollup tables to simplify dashboard queries.

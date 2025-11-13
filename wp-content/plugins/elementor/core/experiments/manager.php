@@ -928,7 +928,16 @@ class Manager extends Base_Object {
 
 		// Register CLI commands.
 		if ( Utils::is_wp_cli() ) {
-			\WP_CLI::add_command( 'elementor experiments', WP_CLI::class );
+			if ( ! class_exists( __NAMESPACE__ . '\WP_CLI', false ) ) {
+				$cli_file = __DIR__ . '/wp-cli.php';
+				if ( file_exists( $cli_file ) ) {
+					require_once $cli_file;
+				}
+			}
+
+			if ( class_exists( __NAMESPACE__ . '\WP_CLI', false ) ) {
+				\WP_CLI::add_command( 'elementor experiments', WP_CLI::class );
+			}
 		}
 	}
 

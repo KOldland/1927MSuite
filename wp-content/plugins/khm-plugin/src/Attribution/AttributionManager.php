@@ -44,6 +44,19 @@ class KHM_Advanced_Attribution_Manager {
         require_once dirname(__FILE__) . '/QueryBuilder.php';
         $this->query_builder = new KHM_Attribution_Query_Builder();
     }
+
+    /**
+     * Populate quick typo/alias corrections for inbound UTM parameters.
+     * Prevents fatals during bootstrap if configuration is not present.
+     */
+    private function init_utm_typo_corrections() {
+        $this->utm_typo_map = array(
+            'goggle'  => 'google',
+            'facebok' => 'facebook',
+            'twiter'  => 'twitter',
+            'linikedin' => 'linkedin',
+        );
+    }
     
     /**
      * Initialize attribution system
