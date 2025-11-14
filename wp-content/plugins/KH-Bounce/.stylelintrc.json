@@ -1,0 +1,19 @@
+{
+  "extends": "stylelint-config-standard-scss",
+  "rules": {
+    "at-rule-no-unknown": null,
+    "scss/at-rule-no-unknown": true,
+    "value-no-vendor-prefix": null,
+    "property-no-vendor-prefix": null,
+    "at-rule-no-vendor-prefix": null,
+    "media-feature-range-notation": null,
+    "color-function-notation": null,
+    "alpha-value-notation": null,
+    "color-hex-length": null,
+    "declaration-empty-line-before": null,
+    "at-rule-empty-line-before": null,
+    "color-function-alias-notation": null,
+    "shorthand-property-no-redundant-values": null,
+    "scss/at-mixin-argumentless-call-parentheses": null
+  }
+}
