@@ -69,11 +69,19 @@ Parameters:
 The plugin includes the **KH Event Filters** widget for filtering events by category and tag.
 
 ### Admin Features
-
-- **Events**: Create and manage events with start/end dates, times, descriptions
-- **Locations**: Manage event venues with addresses and Google Maps integration
-- **Bookings**: View and manage event registrations
-- **Categories & Tags**: Organize events with hierarchical categories and tags
+- **Settings Page**: Comprehensive configuration with tabbed interface
+  - General settings (currency, date/time formats)
+  - Google Maps API configuration
+  - Email settings and notifications
+  - Booking and registration options
+  - Display preferences
+- **Enhanced Admin Interface**: 
+  - Custom columns for event date, location, and booking counts
+  - Advanced filtering by category, tag, date, and status
+  - Sortable columns and bulk actions
+  - Event duplication functionality
+- **Dashboard Widget**: Quick overview with statistics and recent events
+- **Admin Validation**: Real-time form validation and error checking
 
 ## Event Metadata
 
@@ -149,8 +157,24 @@ php test-kh-events.php
 
 ## Changelog
 
+### 1.1.0 (Admin Experience Enhancement)
+- Added comprehensive admin settings page with tabbed interface
+- Enhanced event management with custom columns and advanced filtering
+- Added dashboard widget with event statistics and recent events overview
+- Implemented event duplication functionality
+- Added admin CSS and JavaScript for improved user experience
+- Integrated Google Maps API key management
+- Added email and booking configuration options
+- Enhanced admin interface with sortable columns and bulk actions
+
 ### 1.0.0
 - Initial release with basic event and location post types
+- Calendar, list, and day view shortcodes
+- Basic booking system
+- Event categories and tags
+- Recurring events support
+- AJAX calendar navigation
+- Filter widget
 - Calendar, list, and day view shortcodes
 - Basic booking system
 - Event categories and tags
