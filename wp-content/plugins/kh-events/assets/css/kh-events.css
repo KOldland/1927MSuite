@@ -1,0 +1,85 @@
+/* KH Events Styles */
+
+.kh-events-calendar {
+    max-width: 100%;
+    margin: 20px 0;
+}
+
+.kh-calendar-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.kh-calendar-table th,
+.kh-calendar-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+    vertical-align: top;
+    height: 100px;
+}
+
+.kh-calendar-table th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+}
+
+.kh-empty-cell {
+    background-color: #fafafa;
+}
+
+.kh-day-cell {
+    position: relative;
+}
+
+.kh-day-number {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.kh-event-item {
+    font-size: 12px;
+    margin: 2px 0;
+    padding: 2px 4px;
+    background-color: #007cba;
+    color: white;
+    border-radius: 3px;
+}
+
+.kh-event-item a {
+    color: white;
+    text-decoration: none;
+}
+
+.kh-events-list,
+.kh-events-day {
+    margin: 20px 0;
+}
+
+.kh-event-item {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+}
+
+.kh-event-item h3 {
+    margin-top: 0;
+}
+
+.kh-event-meta {
+    margin: 10px 0;
+    font-size: 14px;
+    color: #666;
+}
+
+.kh-event-meta span {
+    margin-right: 15px;
+}
+
+.kh-event-excerpt,
+.kh-event-content {
+    margin-top: 10px;
+}

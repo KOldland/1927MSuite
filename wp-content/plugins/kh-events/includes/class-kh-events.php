@@ -29,9 +29,11 @@ class KH_Events {
         // Include meta classes
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-meta.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-location-meta.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-events-views.php';
 
         new KH_Event_Meta();
         new KH_Location_Meta();
+        new KH_Events_Views();
     }
 
     public function init() {
