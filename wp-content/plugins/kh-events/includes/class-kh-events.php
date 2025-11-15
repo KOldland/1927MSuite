@@ -25,6 +25,13 @@ class KH_Events {
     private function init_hooks() {
         add_action('init', array($this, 'init'));
         add_action('admin_menu', array($this, 'admin_menu'));
+
+        // Include meta classes
+        require_once KH_EVENTS_DIR . 'includes/class-kh-event-meta.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-location-meta.php';
+
+        new KH_Event_Meta();
+        new KH_Location_Meta();
     }
 
     public function init() {
