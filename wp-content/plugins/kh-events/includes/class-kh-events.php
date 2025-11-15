@@ -30,10 +30,14 @@ class KH_Events {
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-meta.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-location-meta.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-events-views.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-event-tickets.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-event-bookings.php';
 
         new KH_Event_Meta();
         new KH_Location_Meta();
         new KH_Events_Views();
+        new KH_Event_Tickets();
+        new KH_Event_Bookings();
     }
 
     public function init() {
@@ -67,6 +71,19 @@ class KH_Events {
             'has_archive' => true,
             'supports' => array('title', 'editor', 'thumbnail', 'excerpt', 'custom-fields'),
             'show_in_rest' => true,
+        ));
+
+        // Booking post type
+        register_post_type('kh_booking', array(
+            'labels' => array(
+                'name' => __('Bookings', 'kh-events'),
+                'singular_name' => __('Booking', 'kh-events'),
+            ),
+            'public' => false,
+            'show_ui' => true,
+            'show_in_menu' => 'kh-events',
+            'supports' => array('title'),
+            'capability_type' => 'post',
         ));
     }
 

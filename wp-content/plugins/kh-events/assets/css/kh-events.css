@@ -83,3 +83,47 @@
 .kh-event-content {
     margin-top: 10px;
 }
+
+/* Booking Form Styles */
+.kh-booking-form {
+    max-width: 600px;
+    margin: 20px 0;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.kh-booking-form h3 {
+    margin-top: 0;
+}
+
+.kh-ticket-selection {
+    border: 1px solid #eee;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 3px;
+}
+
+.kh-ticket-selection h5 {
+    margin: 0 0 10px 0;
+}
+
+#kh-booking-message .success {
+    color: green;
+}
+
+#kh-booking-message .error {
+    color: red;
+}
+
+/* Ticket Meta Box Styles */
+.kh-ticket-item {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 15px;
+    background-color: #f9f9f9;
+}
+
+.kh-ticket-item h4 {
+    margin-top: 0;
+}
