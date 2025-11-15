@@ -146,3 +146,23 @@
 .kh-ticket-item h4 {
     margin-top: 0;
 }
+
+/* Event Filters Widget */
+.kh-event-filters {
+    margin: 10px 0;
+}
+
+.kh-event-filters p {
+    margin: 10px 0;
+}
+
+.kh-event-filters label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.kh-event-filters select {
+    width: 100%;
+    max-width: 200px;
+}

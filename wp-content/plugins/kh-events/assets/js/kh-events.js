@@ -14,6 +14,8 @@ jQuery(document).ready(function($) {
                 action: 'kh_load_calendar',
                 month: month,
                 year: year,
+                category: calendarContainer.data('category'),
+                tag: calendarContainer.data('tag'),
             },
             success: function(response) {
                 if (response.success) {

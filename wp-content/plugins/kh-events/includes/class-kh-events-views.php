@@ -24,28 +24,31 @@ class KH_Events_Views {
         ));
     }
 
-    public function calendar_shortcode($atts) {
-        $atts = shortcode_atts(array(
-            'view' => 'month',
-            'month' => date('m'),
-            'year' => date('Y'),
-        ), $atts);
+    public function ajax_load_calendar() {
+        $month = intval($_POST['month']);
+        $year = intval($_POST['year']);
+        $category = sanitize_text_field($_POST['category']);
+        $tag = sanitize_text_field($_POST['tag']);
 
         ob_start();
-        $this->render_calendar($atts);
-        return ob_get_clean();
+        $this->render_calendar(array('month' => $month, 'year' => $year, 'category' => $category, 'tag' => $tag));
+        $html = ob_get_clean();
+
+        wp_send_json_success(array('html' => $html));
     }
 
     private function render_calendar($atts) {
         $month = intval($atts['month']);
         $year = intval($atts['year']);
+        $category = $atts['category'];
+        $tag = $atts['tag'];
 
         $first_day = mktime(0, 0, 0, $month, 1, $year);
         $days_in_month = date('t', $first_day);
         $day_of_week = date('w', $first_day);
 
         // Get events for this month
-        $events = apply_filters('kh_get_events_for_month', array(), $month, $year);
+        $events = $this->get_events_for_month($month, $year, $category, $tag);
 
         // Navigation
         $prev_month = $month - 1;
@@ -62,7 +65,7 @@ class KH_Events_Views {
         }
 
         ?>
-        <div class="kh-events-calendar">
+        <div class="kh-events-calendar" data-category="<?php echo esc_attr($category); ?>" data-tag="<?php echo esc_attr($tag); ?>">
             <div class="kh-calendar-navigation">
                 <a href="#" class="kh-nav-link" data-month="<?php echo $prev_month; ?>" data-year="<?php echo $prev_year; ?>">&laquo; <?php _e('Previous', 'kh-events'); ?></a>
                 <h2><?php echo date('F Y', $first_day); ?></h2>
@@ -112,7 +115,7 @@ class KH_Events_Views {
         <?php
     }
 
-    private function get_events_for_month($month, $year) {
+    private function get_events_for_month($month, $year, $category = '', $tag = '') {
         $args = array(
             'post_type' => 'kh_event',
             'posts_per_page' => -1,
@@ -125,6 +128,25 @@ class KH_Events_Views {
                 )
             )
         );
+
+        $tax_query = array();
+        if (!empty($category)) {
+            $tax_query[] = array(
+                'taxonomy' => 'kh_event_category',
+                'field' => 'slug',
+                'terms' => $category
+            );
+        }
+        if (!empty($tag)) {
+            $tax_query[] = array(
+                'taxonomy' => 'kh_event_tag',
+                'field' => 'slug',
+                'terms' => $tag
+            );
+        }
+        if (!empty($tax_query)) {
+            $args['tax_query'] = $tax_query;
+        }
 
         $events = get_posts($args);
         $events_by_date = array();
@@ -146,6 +168,7 @@ class KH_Events_Views {
         $atts = shortcode_atts(array(
             'limit' => 10,
             'category' => '',
+            'tag' => '',
         ), $atts);
 
         ob_start();
@@ -171,12 +194,17 @@ class KH_Events_Views {
         );
 
         if (!empty($atts['category'])) {
-            $args['tax_query'] = array(
-                array(
-                    'taxonomy' => 'category',
-                    'field' => 'slug',
-                    'terms' => $atts['category']
-                )
+            $args['tax_query'][] = array(
+                'taxonomy' => 'kh_event_category',
+                'field' => 'slug',
+                'terms' => $atts['category']
+            );
+        }
+        if (!empty($atts['tag'])) {
+            $args['tax_query'][] = array(
+                'taxonomy' => 'kh_event_tag',
+                'field' => 'slug',
+                'terms' => $atts['tag']
             );
         }
 
@@ -209,6 +237,8 @@ class KH_Events_Views {
     public function day_shortcode($atts) {
         $atts = shortcode_atts(array(
             'date' => date('Y-m-d'),
+            'category' => '',
+            'tag' => '',
         ), $atts);
 
         ob_start();
@@ -218,6 +248,8 @@ class KH_Events_Views {
 
     private function render_day($atts) {
         $date = $atts['date'];
+        $category = $atts['category'];
+        $tag = $atts['tag'];
 
         $args = array(
             'post_type' => 'kh_event',
@@ -231,6 +263,25 @@ class KH_Events_Views {
                 )
             )
         );
+
+        $tax_query = array();
+        if (!empty($category)) {
+            $tax_query[] = array(
+                'taxonomy' => 'kh_event_category',
+                'field' => 'slug',
+                'terms' => $category
+            );
+        }
+        if (!empty($tag)) {
+            $tax_query[] = array(
+                'taxonomy' => 'kh_event_tag',
+                'field' => 'slug',
+                'terms' => $tag
+            );
+        }
+        if (!empty($tax_query)) {
+            $args['tax_query'] = $tax_query;
+        }
 
         $events = get_posts($args);
 

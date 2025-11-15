@@ -33,6 +33,7 @@ class KH_Events {
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-tickets.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-bookings.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-recurring-events.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-event-filters-widget.php';
 
         new KH_Event_Meta();
         new KH_Location_Meta();
@@ -40,11 +41,19 @@ class KH_Events {
         new KH_Event_Tickets();
         new KH_Event_Bookings();
         new KH_Recurring_Events();
+
+        // Register widget
+        add_action('widgets_init', array($this, 'register_widgets'));
+    }
+
+    public function register_widgets() {
+        register_widget('KH_Event_Filters_Widget');
     }
 
     public function init() {
         // Register custom post types
         $this->register_post_types();
+        $this->register_taxonomies();
 
         // Load textdomain
         load_plugin_textdomain('kh-events', false, dirname(KH_EVENTS_BASENAME) . '/languages/');
@@ -61,6 +70,7 @@ class KH_Events {
             'has_archive' => true,
             'supports' => array('title', 'editor', 'thumbnail', 'excerpt', 'custom-fields'),
             'show_in_rest' => true,
+            'taxonomies' => array('kh_event_category', 'kh_event_tag'),
         ));
 
         // Location post type
@@ -86,6 +96,30 @@ class KH_Events {
             'show_in_menu' => 'kh-events',
             'supports' => array('title'),
             'capability_type' => 'post',
+        ));
+    }
+
+    private function register_taxonomies() {
+        // Event Categories
+        register_taxonomy('kh_event_category', 'kh_event', array(
+            'labels' => array(
+                'name' => __('Event Categories', 'kh-events'),
+                'singular_name' => __('Event Category', 'kh-events'),
+            ),
+            'hierarchical' => true,
+            'public' => true,
+            'show_in_rest' => true,
+        ));
+
+        // Event Tags
+        register_taxonomy('kh_event_tag', 'kh_event', array(
+            'labels' => array(
+                'name' => __('Event Tags', 'kh-events'),
+                'singular_name' => __('Event Tag', 'kh-events'),
+            ),
+            'hierarchical' => false,
+            'public' => true,
+            'show_in_rest' => true,
         ));
     }
 
