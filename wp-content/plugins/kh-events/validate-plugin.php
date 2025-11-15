@@ -17,8 +17,11 @@ $files_to_check = array(
     'includes/class-kh-event-bookings.php',
     'includes/class-kh-recurring-events.php',
     'includes/class-kh-event-filters-widget.php',
+    'includes/class-kh-events-admin-settings.php',
     'assets/css/kh-events.css',
     'assets/js/kh-events.js',
+    'assets/css/kh-events-admin.css',
+    'assets/js/kh-events-admin.js',
     'README.md'
 );
 
@@ -42,7 +45,8 @@ $php_files = array(
     'includes/class-kh-event-tickets.php',
     'includes/class-kh-event-bookings.php',
     'includes/class-kh-recurring-events.php',
-    'includes/class-kh-event-filters-widget.php'
+    'includes/class-kh-event-filters-widget.php',
+    'includes/class-kh-events-admin-settings.php'
 );
 
 foreach ($php_files as $file) {
@@ -128,13 +132,21 @@ if (strpos($recurring_content, 'class KH_Recurring_Events') !== false) {
     echo "✗ Recurring events class missing\n";
 }
 
+// Check for admin settings
+$admin_content = file_get_contents(__DIR__ . '/includes/class-kh-events-admin-settings.php');
+if (strpos($admin_content, 'class KH_Events_Admin_Settings') !== false) {
+    echo "✓ Admin settings class found\n";
+} else {
+    echo "✗ Admin settings class missing\n";
+}
+
 echo "\nValidation complete!\n";
 echo "\nNext recommended steps:\n";
 echo "1. Test plugin activation in WordPress environment\n";
 echo "2. Create sample events and test shortcodes\n";
 echo "3. Test AJAX calendar navigation\n";
 echo "4. Test booking system functionality\n";
-echo "5. Add admin settings page\n";
+echo "5. ✅ COMPLETED: Add admin settings page\n";
 echo "6. Implement payment integration\n";
 echo "7. Add email notifications\n";
 echo "8. Test integration with other 1927MSuite plugins\n";
