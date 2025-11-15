@@ -5,6 +5,25 @@
     margin: 20px 0;
 }
 
+.kh-calendar-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.kh-calendar-navigation h2 {
+    margin: 0;
+    flex-grow: 1;
+    text-align: center;
+}
+
+.kh-nav-link {
+    text-decoration: none;
+    color: #007cba;
+    font-weight: bold;
+}
+
 .kh-calendar-table {
     width: 100%;
     border-collapse: collapse;

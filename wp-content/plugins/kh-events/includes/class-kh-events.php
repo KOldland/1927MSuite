@@ -32,12 +32,14 @@ class KH_Events {
         require_once KH_EVENTS_DIR . 'includes/class-kh-events-views.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-tickets.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-bookings.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-recurring-events.php';
 
         new KH_Event_Meta();
         new KH_Location_Meta();
         new KH_Events_Views();
         new KH_Event_Tickets();
         new KH_Event_Bookings();
+        new KH_Recurring_Events();
     }
 
     public function init() {

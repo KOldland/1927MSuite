@@ -19,6 +19,9 @@ class KH_Events_Views {
     public function enqueue_scripts() {
         wp_enqueue_style('kh-events-styles', KH_EVENTS_URL . 'assets/css/kh-events.css', array(), KH_EVENTS_VERSION);
         wp_enqueue_script('kh-events-scripts', KH_EVENTS_URL . 'assets/js/kh-events.js', array('jquery'), KH_EVENTS_VERSION, true);
+        wp_localize_script('kh-events-scripts', 'kh_events_ajax', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+        ));
     }
 
     public function calendar_shortcode($atts) {
@@ -42,11 +45,29 @@ class KH_Events_Views {
         $day_of_week = date('w', $first_day);
 
         // Get events for this month
-        $events = $this->get_events_for_month($month, $year);
+        $events = apply_filters('kh_get_events_for_month', array(), $month, $year);
+
+        // Navigation
+        $prev_month = $month - 1;
+        $prev_year = $year;
+        if ($prev_month < 1) {
+            $prev_month = 12;
+            $prev_year--;
+        }
+        $next_month = $month + 1;
+        $next_year = $year;
+        if ($next_month > 12) {
+            $next_month = 1;
+            $next_year++;
+        }
 
         ?>
         <div class="kh-events-calendar">
-            <h2><?php echo date('F Y', $first_day); ?></h2>
+            <div class="kh-calendar-navigation">
+                <a href="#" class="kh-nav-link" data-month="<?php echo $prev_month; ?>" data-year="<?php echo $prev_year; ?>">&laquo; <?php _e('Previous', 'kh-events'); ?></a>
+                <h2><?php echo date('F Y', $first_day); ?></h2>
+                <a href="#" class="kh-nav-link" data-month="<?php echo $next_month; ?>" data-year="<?php echo $next_year; ?>"><?php _e('Next', 'kh-events'); ?> &raquo;</a>
+            </div>
             <table class="kh-calendar-table">
                 <thead>
                     <tr>
@@ -118,7 +139,7 @@ class KH_Events_Views {
             }
         }
 
-        return $events_by_date;
+        return apply_filters('kh_get_events_for_month', $events_by_date, $month, $year);
     }
 
     public function list_shortcode($atts) {
@@ -160,6 +181,10 @@ class KH_Events_Views {
         }
 
         $events = get_posts($args);
+        $events = apply_filters('kh_get_events_for_list', $events, array(
+            'start_date' => date('Y-m-d'),
+            'end_date' => date('Y-m-d', strtotime('+1 year')),
+        ));
 
         ?>
         <div class="kh-events-list">
