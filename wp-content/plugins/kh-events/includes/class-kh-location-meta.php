@@ -82,7 +82,16 @@ class KH_Location_Meta {
             return;
         }
 
-        wp_enqueue_script('google-maps', 'https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places', array(), null, true);
+        // Get Google Maps API key from settings
+        $maps_settings = get_option('kh_events_maps_settings', array());
+        $api_key = $maps_settings['google_maps_api_key'] ?? '';
+
+        if (empty($api_key)) {
+            echo '<div class="notice notice-warning"><p>' . __('Google Maps API key is required for location mapping. Please configure it in KH Events Settings.', 'kh-events') . '</p></div>';
+            return;
+        }
+
+        wp_enqueue_script('google-maps', 'https://maps.googleapis.com/maps/api/js?key=' . esc_attr($api_key) . '&libraries=places', array(), null, true);
         wp_enqueue_script('kh-location-map', KH_EVENTS_URL . 'assets/js/location-map.js', array('jquery', 'google-maps'), KH_EVENTS_VERSION, true);
         wp_localize_script('kh-location-map', 'kh_location_vars', array(
             'lat' => get_post_meta($post->ID, '_kh_location_lat', true) ?: '40.7128',

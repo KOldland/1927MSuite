@@ -1,0 +1,6 @@
+{
+    "name": "kh-events/kh-events",
+    "require": {
+        "stripe/stripe-php": "^18.2"
+    }
+}

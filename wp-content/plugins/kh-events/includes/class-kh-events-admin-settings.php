@@ -175,12 +175,38 @@ class KH_Events_Admin_Settings {
             'kh_events_display_section'
         );
 
+        // Payment Settings
+        register_setting('kh_events_payment', 'kh_events_payment_settings', array($this, 'sanitize_payment_settings'));
+
+        add_settings_section(
+            'kh_events_payment_section',
+            __('Payment Settings', 'kh-events'),
+            array($this, 'payment_section_callback'),
+            'kh_events_payment'
+        );
+
         add_settings_field(
-            'kh_events_show_past_events',
-            __('Show Past Events', 'kh-events'),
-            array($this, 'show_past_events_field_callback'),
-            'kh_events_display',
-            'kh_events_display_section'
+            'kh_events_enable_payments',
+            __('Enable Payments', 'kh-events'),
+            array($this, 'enable_payments_field_callback'),
+            'kh_events_payment',
+            'kh_events_payment_section'
+        );
+
+        add_settings_field(
+            'kh_events_default_gateway',
+            __('Default Gateway', 'kh-events'),
+            array($this, 'default_gateway_field_callback'),
+            'kh_events_payment',
+            'kh_events_payment_section'
+        );
+
+        add_settings_field(
+            'kh_events_payment_description',
+            __('Payment Description', 'kh-events'),
+            array($this, 'payment_description_field_callback'),
+            'kh_events_payment',
+            'kh_events_payment_section'
         );
     }
 
@@ -203,6 +229,7 @@ class KH_Events_Admin_Settings {
             'email' => __('Email', 'kh-events'),
             'booking' => __('Booking', 'kh-events'),
             'display' => __('Display', 'kh-events'),
+            'payment' => __('Payment', 'kh-events'),
         );
 
         ?>
@@ -233,6 +260,10 @@ class KH_Events_Admin_Settings {
                     case 'display':
                         settings_fields('kh_events_display');
                         do_settings_sections('kh_events_display');
+                        break;
+                    case 'payment':
+                        settings_fields('kh_events_payment');
+                        do_settings_sections('kh_events_payment');
                         break;
                     default:
                         settings_fields('kh_events_general');
@@ -417,6 +448,52 @@ class KH_Events_Admin_Settings {
         $sanitized = array();
         $sanitized['events_per_page'] = absint($input['events_per_page'] ?? 10);
         $sanitized['show_past_events'] = isset($input['show_past_events']) ? '1' : '0';
+        return $sanitized;
+    }
+
+    public function payment_section_callback() {
+        echo '<p>' . __('Configure payment processing settings for event bookings.', 'kh-events') . '</p>';
+    }
+
+    public function enable_payments_field_callback() {
+        $options = get_option('kh_events_payment_settings');
+        $enabled = isset($options['enable_payments']) ? $options['enable_payments'] : '0';
+        echo '<input type="checkbox" name="kh_events_payment_settings[enable_payments]" value="1" ' . checked($enabled, '1', false) . ' />';
+        echo '<label>' . __('Enable payment processing for event bookings.', 'kh-events') . '</label>';
+    }
+
+    public function default_gateway_field_callback() {
+        $options = get_option('kh_events_payment_settings');
+        $default_gateway = isset($options['default_gateway']) ? $options['default_gateway'] : 'stripe';
+
+        if (function_exists('KH_Payment_Handler')) {
+            $handler = KH_Payment_Handler::instance();
+            $gateways = $handler->get_available_gateways();
+
+            echo '<select name="kh_events_payment_settings[default_gateway]" id="kh_events_default_gateway">';
+            echo '<option value="">' . __('Select Default Gateway', 'kh-events') . '</option>';
+
+            foreach ($gateways as $gateway_id => $gateway) {
+                echo '<option value="' . $gateway_id . '" ' . selected($default_gateway, $gateway_id, false) . '>' . $gateway->get_gateway_name() . '</option>';
+            }
+            echo '</select>';
+        } else {
+            echo '<p>' . __('Payment handler not available.', 'kh-events') . '</p>';
+        }
+    }
+
+    public function payment_description_field_callback() {
+        $options = get_option('kh_events_payment_settings');
+        $description = isset($options['payment_description']) ? $options['payment_description'] : __('Event booking payment', 'kh-events');
+        echo '<input type="text" name="kh_events_payment_settings[payment_description]" value="' . esc_attr($description) . '" class="regular-text" />';
+        echo '<p class="description">' . __('Default description for payment transactions.', 'kh-events') . '</p>';
+    }
+
+    public function sanitize_payment_settings($input) {
+        $sanitized = array();
+        $sanitized['enable_payments'] = isset($input['enable_payments']) ? '1' : '0';
+        $sanitized['default_gateway'] = sanitize_text_field($input['default_gateway'] ?? '');
+        $sanitized['payment_description'] = sanitize_text_field($input['payment_description'] ?? '');
         return $sanitized;
     }
 

@@ -22,6 +22,11 @@ define('KH_EVENTS_DIR', plugin_dir_path(__FILE__));
 define('KH_EVENTS_URL', plugin_dir_url(__FILE__));
 define('KH_EVENTS_BASENAME', plugin_basename(__FILE__));
 
+// Load composer dependencies if available
+if (file_exists(KH_EVENTS_DIR . 'vendor/autoload.php')) {
+    require_once KH_EVENTS_DIR . 'vendor/autoload.php';
+}
+
 // Include core files
 require_once KH_EVENTS_DIR . 'includes/class-kh-events.php';
 
