@@ -1,0 +1,51 @@
+.kh-folders-admin-notice {
+    padding: 12px 15px;
+    border-left: 4px solid #2271b1;
+    background: #f0f6fc;
+    margin-top: 15px;
+}
+
+.kh-folders-admin-notice.is-error {
+    border-color: #d63638;
+    background: #fdf4f4;
+}
+
+.kh-folders-admin-notice.is-success {
+    border-color: #00a32a;
+    background: #edf7ed;
+}
+
+.kh-folders-table {
+    margin-top: 20px;
+}
+
+.kh-folders-actions {
+    margin-top: 15px;
+    margin-bottom: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.kh-folders-table input[type="color"] {
+    width: 48px;
+    height: 32px;
+    padding: 0;
+}
+
+.kh-folders-table input[type="number"] {
+    width: 70px;
+}
+
+.kh-folder-drag {
+    cursor: move;
+}
+
+.kh-folders-table .column-handle {
+    width: 40px;
+    text-align: center;
+}
+
+.kh-folders-table .column-select {
+    width: 50px;
+    text-align: center;
+}

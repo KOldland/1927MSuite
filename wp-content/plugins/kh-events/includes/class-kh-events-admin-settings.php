@@ -208,6 +208,48 @@ class KH_Events_Admin_Settings {
             'kh_events_payment',
             'kh_events_payment_section'
         );
+
+        // GDPR Settings
+        register_setting('kh_events_gdpr', 'kh_events_gdpr_settings', array($this, 'sanitize_gdpr_settings'));
+
+        add_settings_section(
+            'kh_events_gdpr_section',
+            __('GDPR Compliance Settings', 'kh-events'),
+            array($this, 'gdpr_section_callback'),
+            'kh_events_gdpr'
+        );
+
+        add_settings_field(
+            'kh_events_require_consent',
+            __('Require Consent', 'kh-events'),
+            array($this, 'require_consent_field_callback'),
+            'kh_events_gdpr',
+            'kh_events_gdpr_section'
+        );
+
+        add_settings_field(
+            'kh_events_consent_text',
+            __('Consent Text', 'kh-events'),
+            array($this, 'consent_text_field_callback'),
+            'kh_events_gdpr',
+            'kh_events_gdpr_section'
+        );
+
+        add_settings_field(
+            'kh_events_additional_consent_text',
+            __('Additional Consent Text', 'kh-events'),
+            array($this, 'additional_consent_text_field_callback'),
+            'kh_events_gdpr',
+            'kh_events_gdpr_section'
+        );
+
+        add_settings_field(
+            'kh_events_data_retention',
+            __('Data Retention Period', 'kh-events'),
+            array($this, 'data_retention_field_callback'),
+            'kh_events_gdpr',
+            'kh_events_gdpr_section'
+        );
     }
 
     public function enqueue_admin_scripts($hook) {
@@ -230,6 +272,7 @@ class KH_Events_Admin_Settings {
             'booking' => __('Booking', 'kh-events'),
             'display' => __('Display', 'kh-events'),
             'payment' => __('Payment', 'kh-events'),
+            'gdpr' => __('GDPR', 'kh-events'),
         );
 
         ?>
@@ -264,6 +307,10 @@ class KH_Events_Admin_Settings {
                     case 'payment':
                         settings_fields('kh_events_payment');
                         do_settings_sections('kh_events_payment');
+                        break;
+                    case 'gdpr':
+                        settings_fields('kh_events_gdpr');
+                        do_settings_sections('kh_events_gdpr');
                         break;
                     default:
                         settings_fields('kh_events_general');
@@ -522,5 +569,67 @@ class KH_Events_Admin_Settings {
 
     public static function get_display_option($key, $default = '') {
         return self::get_option('display', $key, $default);
+    }
+
+    // GDPR Settings Callbacks
+    public function sanitize_gdpr_settings($settings) {
+        return array(
+            'require_consent' => isset($settings['require_consent']) ? 'yes' : 'no',
+            'consent_text' => sanitize_text_field($settings['consent_text'] ?? ''),
+            'additional_consent_text' => wp_kses_post($settings['additional_consent_text'] ?? ''),
+            'data_retention' => absint($settings['data_retention'] ?? 2555), // Default 7 years in days
+        );
+    }
+
+    public function gdpr_section_callback() {
+        echo '<p>' . __('Configure GDPR compliance settings for data privacy and consent management.', 'kh-events') . '</p>';
+        echo '<p>' . __('These settings help you comply with data protection regulations by managing user consent and data retention.', 'kh-events') . '</p>';
+    }
+
+    public function require_consent_field_callback() {
+        $settings = get_option('kh_events_gdpr_settings', array());
+        $require_consent = $settings['require_consent'] ?? 'yes';
+
+        echo '<label>';
+        echo '<input type="checkbox" name="kh_events_gdpr_settings[require_consent]" value="yes" ' . checked($require_consent, 'yes', false) . '> ';
+        echo __('Require user consent before processing bookings and event submissions', 'kh-events');
+        echo '</label>';
+        echo '<p class="description">' . __('When enabled, users must agree to your privacy policy before submitting forms.', 'kh-events') . '</p>';
+    }
+
+    public function consent_text_field_callback() {
+        $settings = get_option('kh_events_gdpr_settings', array());
+        $consent_text = $settings['consent_text'] ?? __('I agree to the processing of my personal data according to the %s.', 'kh-events');
+
+        echo '<textarea name="kh_events_gdpr_settings[consent_text]" rows="3" cols="50" class="large-text">' . esc_textarea($consent_text) . '</textarea>';
+        echo '<p class="description">' . __('Use %s as a placeholder for the privacy policy link. This text will appear as a required checkbox on all forms.', 'kh-events') . '</p>';
+    }
+
+    public function additional_consent_text_field_callback() {
+        $settings = get_option('kh_events_gdpr_settings', array());
+        $additional_text = $settings['additional_consent_text'] ?? '';
+
+        wp_editor($additional_text, 'kh_events_gdpr_settings_additional_consent_text', array(
+            'textarea_name' => 'kh_events_gdpr_settings[additional_consent_text]',
+            'textarea_rows' => 5,
+            'media_buttons' => false,
+            'tinymce' => false,
+            'quicktags' => true,
+        ));
+
+        echo '<p class="description">' . __('Optional additional consent information that appears below the main consent checkbox.', 'kh-events') . '</p>';
+    }
+
+    public function data_retention_field_callback() {
+        $settings = get_option('kh_events_gdpr_settings', array());
+        $retention = $settings['data_retention'] ?? 2555; // 7 years in days
+
+        echo '<input type="number" name="kh_events_gdpr_settings[data_retention]" value="' . esc_attr($retention) . '" min="1" max="9999" step="1"> ';
+        echo __('days', 'kh-events');
+        echo '<p class="description">' . __('How long to retain booking and event data (in days). Default is 7 years (2555 days) for accounting purposes.', 'kh-events') . '</p>';
+    }
+
+    public static function get_gdpr_option($key, $default = '') {
+        return self::get_option('gdpr', $key, $default);
     }
 }

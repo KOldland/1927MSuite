@@ -276,6 +276,8 @@ class KH_Event_Bookings {
                     <?php endif; ?>
                 </div>
 
+                <?php do_action('kh_events_booking_form_before_submit'); ?>
+
                 <p>
                     <button type="submit" class="button" id="kh-submit-booking"><?php _e('Submit Booking', 'kh-events'); ?></button>
                 </p>
@@ -492,6 +494,9 @@ class KH_Event_Bookings {
             
             // Send admin notification
             $this->send_admin_booking_notification($booking_id);
+
+            // Trigger GDPR consent storage
+            do_action('kh_events_booking_created', $booking_id, $_POST);
 
             wp_send_json_success(array('message' => __('Booking submitted successfully. You will receive a confirmation email soon.', 'kh-events')));
         } else {

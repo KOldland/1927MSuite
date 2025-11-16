@@ -222,6 +222,9 @@ class KH_Events_Views {
             set_post_thumbnail($event_id, intval($_POST['featured_image']));
         }
 
+        // Trigger GDPR consent storage
+        do_action('kh_events_event_submitted', $event_id, $_POST);
+
         wp_send_json_success(array(
             'message' => __('Event submitted successfully and is pending approval.', 'kh-events'),
             'event_id' => $event_id
@@ -1181,6 +1184,8 @@ class KH_Events_Views {
                         </div>
                     </div>
                 </div>
+
+                <?php do_action('kh_events_submit_form_before_submit'); ?>
 
                 <div class="kh-form-actions">
                     <button type="submit" class="kh-submit-button"><?php _e('Submit Event', 'kh-events'); ?></button>
