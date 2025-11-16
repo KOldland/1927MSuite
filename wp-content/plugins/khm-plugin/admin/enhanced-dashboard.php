@@ -203,6 +203,16 @@ class KHM_Enhanced_Dashboard {
         echo '<div class="khm-card-change positive">↗ ' . number_format($stats['clicks_today']) . ' today</div>';
         echo '</div>';
         echo '</div>';
+
+        // Preview Manager CTA
+        echo '<div class="khm-card khm-card-preview">';
+        echo '<div class="khm-card-icon">📝</div>';
+        echo '<div class="khm-card-content">';
+        echo '<h3>Preview Manager</h3>';
+        echo '<p>Share draft campaigns with execs before launch using secure preview links.</p>';
+        echo '<a class="button button-secondary" href="' . esc_url( admin_url( 'admin.php?page=khm-preview-links' ) ) . '">Manage Preview Links</a>';
+        echo '</div>';
+        echo '</div>';
         
         echo '</div>';
     }

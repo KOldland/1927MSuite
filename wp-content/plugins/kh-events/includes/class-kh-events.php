@@ -26,6 +26,7 @@ class KH_Events {
         add_action('init', array($this, 'init'));
         add_action('admin_menu', array($this, 'admin_menu'));
         add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
+        add_action('wp_enqueue_scripts', array($this, 'frontend_enqueue_scripts'));
         add_action('template_redirect', array($this, 'handle_ical_export'));
 
         // Include meta classes
@@ -35,18 +36,26 @@ class KH_Events {
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-tickets.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-bookings.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-recurring-events.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-event-status.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-filters-widget.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-events-admin-settings.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-payment-gateways.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-event-import-export.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-event-rest-api.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-event-timezone.php';
 
         new KH_Event_Meta();
         new KH_Location_Meta();
         new KH_Events_Views();
         new KH_Event_Tickets();
         new KH_Event_Bookings();
-        new KH_Recurring_Events();
+        KH_Recurring_Events::instance();
+        KH_Event_Status::instance();
         KH_Events_Admin_Settings::instance();
         KH_Payment_Handler::instance();
+        KH_Event_Import_Export::instance();
+        KH_Event_REST_API::instance();
+        KH_Event_Timezone::instance();
 
         // Register widget
         add_action('widgets_init', array($this, 'register_widgets'));
@@ -79,6 +88,11 @@ class KH_Events {
         add_action('wp_ajax_kh_submit_event', array('KH_Events_Views', 'ajax_submit_event'));
         add_action('wp_ajax_kh_get_dashboard_stats', array('KH_Events_Views', 'ajax_get_dashboard_stats'));
         add_action('wp_ajax_kh_get_user_events', array('KH_Events_Views', 'ajax_get_user_events'));
+
+        // Timezone AJAX handlers
+        add_action('wp_ajax_kh_save_user_timezone', array($this, 'ajax_save_user_timezone'));
+        add_action('wp_ajax_kh_update_event_timezone', array($this, 'ajax_update_event_timezone'));
+        add_action('wp_ajax_kh_get_event_timezone_info', array($this, 'ajax_get_event_timezone_info'));
 
         // Dashboard widget
         add_action('wp_dashboard_setup', array($this, 'add_dashboard_widget'));
@@ -173,6 +187,7 @@ class KH_Events {
         // Load on our admin pages and edit screens
         if (strpos($hook, 'kh-events') !== false || strpos($hook, 'kh_booking') !== false || $hook === 'edit.php') {
             wp_enqueue_style('kh-events-admin', KH_EVENTS_URL . 'assets/css/admin.css', array(), KH_EVENTS_VERSION);
+            wp_enqueue_style('kh-timezone-admin', KH_EVENTS_URL . 'assets/css/timezone.css', array(), KH_EVENTS_VERSION);
         }
 
         if ('toplevel_page_kh-events' !== $hook && 'events_page_kh-events-settings' !== $hook) {
@@ -184,6 +199,13 @@ class KH_Events {
             'nonce' => wp_create_nonce('kh_duplicate_event'),
             'ajax_url' => admin_url('admin-ajax.php'),
         ));
+    }
+
+    public function frontend_enqueue_scripts() {
+        // Load on event pages
+        if (is_singular('kh_event') || is_post_type_archive('kh_event')) {
+            wp_enqueue_style('kh-timezone-frontend', KH_EVENTS_URL . 'assets/css/timezone.css', array(), KH_EVENTS_VERSION);
+        }
     }
 
     public function add_event_columns($columns) {
@@ -670,6 +692,78 @@ class KH_Events {
     public static function activate() {
         // Activation tasks
         flush_rewrite_rules();
+    }
+
+    /**
+     * AJAX save user timezone
+     */
+    public function ajax_save_user_timezone() {
+        check_ajax_referer('kh_timezone_convert', 'nonce');
+
+        $timezone = sanitize_text_field($_POST['timezone']);
+        $user_id = get_current_user_id();
+
+        if (!$user_id) {
+            wp_send_json_error('User not logged in');
+        }
+
+        $timezone_instance = KH_Event_Timezone::instance();
+        if ($timezone_instance->set_user_timezone($timezone, $user_id)) {
+            wp_send_json_success(array('timezone' => $timezone));
+        } else {
+            wp_send_json_error('Failed to save timezone');
+        }
+    }
+
+    /**
+     * AJAX update event timezone
+     */
+    public function ajax_update_event_timezone() {
+        check_ajax_referer('kh_timezone_info', 'nonce');
+
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error('Insufficient permissions');
+        }
+
+        $event_id = absint($_POST['event_id']);
+        $timezone = sanitize_text_field($_POST['timezone']);
+
+        $timezone_instance = KH_Event_Timezone::instance();
+        if ($timezone_instance->set_event_timezone($event_id, $timezone)) {
+            wp_send_json_success(array('event_id' => $event_id, 'timezone' => $timezone));
+        } else {
+            wp_send_json_error('Failed to update event timezone');
+        }
+    }
+
+    /**
+     * AJAX get event timezone info
+     */
+    public function ajax_get_event_timezone_info() {
+        check_ajax_referer('kh_timezone_convert', 'nonce');
+
+        $event_id = absint($_POST['event_id']);
+        $event = get_post($event_id);
+
+        if (!$event || $event->post_type !== 'kh_event') {
+            wp_send_json_error('Event not found');
+        }
+
+        $timezone_instance = KH_Event_Timezone::instance();
+        $event_timezone = $timezone_instance->get_event_timezone($event_id);
+
+        $start_date = get_post_meta($event_id, '_kh_event_start_date', true);
+        $start_time = get_post_meta($event_id, '_kh_event_start_time', true);
+        $datetime = $start_date . ($start_time ? ' ' . $start_time : '');
+
+        wp_send_json_success(array(
+            'event_id' => $event_id,
+            'timezone' => $event_timezone,
+            'timezone_name' => $timezone_instance->get_available_timezones()[$event_timezone] ?? $event_timezone,
+            'offset' => $timezone_instance->get_timezone_offset($event_timezone),
+            'abbr' => $timezone_instance->get_timezone_abbr($event_timezone),
+            'local_time' => $timezone_instance->format_datetime_for_user($datetime, $event_timezone)
+        ));
     }
 
     public static function deactivate() {

@@ -18,10 +18,17 @@ $files_to_check = array(
     'includes/class-kh-recurring-events.php',
     'includes/class-kh-event-filters-widget.php',
     'includes/class-kh-events-admin-settings.php',
+    'includes/class-kh-event-import-export.php',
+    'includes/class-kh-event-rest-api.php',
+    'includes/class-kh-event-status.php',
+    'includes/class-kh-event-timezone.php',
     'assets/css/kh-events.css',
     'assets/js/kh-events.js',
     'assets/css/kh-events-admin.css',
     'assets/js/kh-events-admin.js',
+    'assets/js/timezone-admin.js',
+    'assets/js/timezone-frontend.js',
+    'assets/css/timezone.css',
     'README.md'
 );
 
@@ -46,7 +53,11 @@ $php_files = array(
     'includes/class-kh-event-bookings.php',
     'includes/class-kh-recurring-events.php',
     'includes/class-kh-event-filters-widget.php',
-    'includes/class-kh-events-admin-settings.php'
+    'includes/class-kh-events-admin-settings.php',
+    'includes/class-kh-event-import-export.php',
+    'includes/class-kh-event-rest-api.php',
+    'includes/class-kh-event-status.php',
+    'includes/class-kh-event-timezone.php'
 );
 
 foreach ($php_files as $file) {
@@ -140,6 +151,38 @@ if (strpos($admin_content, 'class KH_Events_Admin_Settings') !== false) {
     echo "✗ Admin settings class missing\n";
 }
 
+// Check for import/export functionality
+$import_export_content = file_get_contents(__DIR__ . '/includes/class-kh-event-import-export.php');
+if (strpos($import_export_content, 'class KH_Event_Import_Export') !== false) {
+    echo "✓ Import/Export class found\n";
+} else {
+    echo "✗ Import/Export class missing\n";
+}
+
+// Check for REST API functionality
+$rest_api_content = file_get_contents(__DIR__ . '/includes/class-kh-event-rest-api.php');
+if (strpos($rest_api_content, 'class KH_Event_REST_API') !== false) {
+    echo "✓ REST API class found\n";
+} else {
+    echo "✗ REST API class missing\n";
+}
+
+// Check for event status functionality
+$status_content = file_get_contents(__DIR__ . '/includes/class-kh-event-status.php');
+if (strpos($status_content, 'class KH_Event_Status') !== false) {
+    echo "✓ Event Status class found\n";
+} else {
+    echo "✗ Event Status class missing\n";
+}
+
+// Check for timezone functionality
+$timezone_content = file_get_contents(__DIR__ . '/includes/class-kh-event-timezone.php');
+if (strpos($timezone_content, 'class KH_Event_Timezone') !== false) {
+    echo "✓ Timezone class found\n";
+} else {
+    echo "✗ Timezone class missing\n";
+}
+
 echo "\nValidation complete!\n";
 echo "\nNext recommended steps:\n";
 echo "1. Test plugin activation in WordPress environment\n";
@@ -147,6 +190,9 @@ echo "2. Create sample events and test shortcodes\n";
 echo "3. Test AJAX calendar navigation\n";
 echo "4. Test booking system functionality\n";
 echo "5. ✅ COMPLETED: Add admin settings page\n";
-echo "6. Implement payment integration\n";
-echo "7. Add email notifications\n";
-echo "8. Test integration with other 1927MSuite plugins\n";
+echo "6. ✅ COMPLETED: Implement import/export functionality\n";
+echo "7. ✅ COMPLETED: Add REST API endpoints\n";
+echo "8. ✅ COMPLETED: Implement event status management\n";
+echo "9. ✅ COMPLETED: Add multi-timezone support\n";
+echo "10. Test integration with other 1927MSuite plugins\n";
+echo "11. Final production deployment\n";

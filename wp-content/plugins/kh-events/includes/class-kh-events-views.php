@@ -46,9 +46,10 @@ class KH_Events_Views {
     }
 
     public function ajax_search_events() {
-        $search_term = sanitize_text_field($_POST['search_term'] ?? '');
+        $search_term = sanitize_text_field($_POST['search'] ?? '');
         $category = sanitize_text_field($_POST['category'] ?? '');
         $tag = sanitize_text_field($_POST['tag'] ?? '');
+        $status = sanitize_text_field($_POST['status'] ?? '');
         $location = sanitize_text_field($_POST['location'] ?? '');
         $start_date = sanitize_text_field($_POST['start_date'] ?? '');
         $end_date = sanitize_text_field($_POST['end_date'] ?? '');
@@ -87,6 +88,15 @@ class KH_Events_Views {
                 'taxonomy' => 'kh_event_tag',
                 'field' => 'slug',
                 'terms' => $tag
+            );
+        }
+
+        // Add status filter
+        if (!empty($status)) {
+            $args['meta_query'][] = array(
+                'key' => '_kh_event_status',
+                'value' => $status,
+                'compare' => '='
             );
         }
 
@@ -129,6 +139,7 @@ class KH_Events_Views {
         foreach ($events as $event) {
             $location_id = get_post_meta($event->ID, '_kh_event_location', true);
             $location_name = $location_id ? get_the_title($location_id) : '';
+            $event_status = KH_Event_Status::instance()->get_status_display($event->ID);
 
             $results[] = array(
                 'id' => $event->ID,
@@ -138,7 +149,8 @@ class KH_Events_Views {
                 'time' => get_post_meta($event->ID, '_kh_event_start_time', true),
                 'location' => $location_name,
                 'excerpt' => get_the_excerpt($event->ID),
-                'thumbnail' => get_the_post_thumbnail_url($event->ID, 'thumbnail')
+                'thumbnail' => get_the_post_thumbnail_url($event->ID, 'thumbnail'),
+                'status' => $event_status
             );
         }
 
@@ -448,6 +460,10 @@ class KH_Events_Views {
                         <div class="kh-event-meta">
                             <span class="kh-event-date"><?php echo get_post_meta($event->ID, '_kh_event_start_date', true); ?></span>
                             <span class="kh-event-time"><?php echo get_post_meta($event->ID, '_kh_event_start_time', true); ?> - <?php echo get_post_meta($event->ID, '_kh_event_end_time', true); ?></span>
+                            <?php
+                            $event_status = KH_Event_Status::instance()->get_status_display($event->ID);
+                            echo '<span class="kh-event-status-display kh-event-status-' . esc_attr($event_status['status']) . '" style="background-color: ' . esc_attr($event_status['color']) . ';">' . esc_html($event_status['label']) . '</span>';
+                            ?>
                         </div>
                         <div class="kh-event-excerpt"><?php echo get_the_excerpt($event->ID); ?></div>
                     </div>
@@ -1015,6 +1031,16 @@ class KH_Events_Views {
                             }
                             ?>
                         </select>
+
+                        <select class="kh-status-filter">
+                            <option value=""><?php _e('All Statuses', 'kh-events'); ?></option>
+                            <?php
+                            $statuses = KH_Event_Status::instance()->get_statuses();
+                            foreach ($statuses as $status_key => $status_data) {
+                                echo '<option value="' . esc_attr($status_key) . '">' . esc_html($status_data['label']) . '</option>';
+                            }
+                            ?>
+                        </select>
                     </div>
 
                     <div class="kh-filter-row">
@@ -1282,8 +1308,7 @@ class KH_Events_Views {
         ob_start();
         if (!empty($user_events)) {
             foreach ($user_events as $event) {
-                $status_class = 'kh-status-' . $event->post_status;
-                $status_text = ucfirst($event->post_status);
+                $event_status = KH_Event_Status::instance()->get_status_display($event->ID);
                 $event_date = get_post_meta($event->ID, '_kh_event_date', true);
                 $event_time = get_post_meta($event->ID, '_kh_event_time', true);
                 $location = get_post_meta($event->ID, '_kh_event_location', true);
@@ -1297,7 +1322,7 @@ class KH_Events_Views {
                 if ($event_time) {
                     echo '<span class="kh-event-time">' . esc_html($event_time) . '</span>';
                 }
-                echo '<span class="kh-event-status ' . esc_attr($status_class) . '">' . esc_html($status_text) . '</span>';
+                echo '<span class="kh-event-status-display kh-event-status-' . esc_attr($event_status['status']) . '" style="background-color: ' . esc_attr($event_status['color']) . ';">' . esc_html($event_status['label']) . '</span>';
                 echo '</div>';
                 if ($location && isset($location['name'])) {
                     echo '<div class="kh-event-location">' . esc_html($location['name']) . '</div>';

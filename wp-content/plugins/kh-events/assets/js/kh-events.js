@@ -32,7 +32,7 @@ jQuery(document).ready(function($) {
         performSearch(searchContainer);
     });
 
-    $('.kh-category-filter, .kh-tag-filter, .kh-location-filter, .kh-start-date-filter, .kh-end-date-filter').on('change input', function() {
+    $('.kh-category-filter, .kh-tag-filter, .kh-status-filter, .kh-location-filter, .kh-start-date-filter, .kh-end-date-filter').on('change input', function() {
         var searchContainer = $(this).closest('.kh-events-search');
         performSearch(searchContainer);
     });
@@ -42,6 +42,7 @@ jQuery(document).ready(function($) {
         searchContainer.find('.kh-search-input').val('');
         searchContainer.find('.kh-category-filter').val('');
         searchContainer.find('.kh-tag-filter').val('');
+        searchContainer.find('.kh-status-filter').val('');
         searchContainer.find('.kh-location-filter').val('');
         searchContainer.find('.kh-start-date-filter').val('');
         searchContainer.find('.kh-end-date-filter').val('');
@@ -54,6 +55,7 @@ jQuery(document).ready(function($) {
             search: searchContainer.find('.kh-search-input').val(),
             category: searchContainer.find('.kh-category-filter').val(),
             tag: searchContainer.find('.kh-tag-filter').val(),
+            status: searchContainer.find('.kh-status-filter').val(),
             location: searchContainer.find('.kh-location-filter').val(),
             start_date: searchContainer.find('.kh-start-date-filter').val(),
             end_date: searchContainer.find('.kh-end-date-filter').val(),
@@ -67,9 +69,32 @@ jQuery(document).ready(function($) {
             type: 'POST',
             data: searchData,
             success: function(response) {
-                if (response.success) {
-                    searchContainer.find('.kh-results-container').html(response.data.html);
-                    searchContainer.find('.kh-search-status').text('Found ' + response.data.count + ' events');
+                if (response.success && response.data.events && response.data.events.length > 0) {
+                    var html = '';
+                    response.data.events.forEach(function(event) {
+                        html += '<div class="kh-event-item">';
+                        html += '<h3><a href="' + event.permalink + '">' + event.title + '</a></h3>';
+                        html += '<div class="kh-event-meta">';
+                        if (event.date) {
+                            html += '<span class="kh-event-date">' + event.date + '</span>';
+                        }
+                        if (event.time) {
+                            html += '<span class="kh-event-time">' + event.time + '</span>';
+                        }
+                        if (event.status) {
+                            html += '<span class="kh-event-status-display kh-event-status-' + event.status.status + '" style="background-color: ' + event.status.color + ';">' + event.status.label + '</span>';
+                        }
+                        html += '</div>';
+                        if (event.location) {
+                            html += '<div class="kh-event-location">' + event.location + '</div>';
+                        }
+                        if (event.excerpt) {
+                            html += '<div class="kh-event-excerpt">' + event.excerpt + '</div>';
+                        }
+                        html += '</div>';
+                    });
+                    searchContainer.find('.kh-results-container').html(html);
+                    searchContainer.find('.kh-search-status').text('Found ' + response.data.events.length + ' events');
                 } else {
                     searchContainer.find('.kh-results-container').html('<div class="kh-no-results">No events found.</div>');
                     searchContainer.find('.kh-search-status').text('No events found');

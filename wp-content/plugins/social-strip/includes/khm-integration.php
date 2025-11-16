@@ -342,93 +342,137 @@ class KSS_KHM_Integration {
 
     /**
      * Get enhanced widget data for social strip
-     * This method provides data for all 5 buttons: Download, Save, Buy, Gift, Share
+     * This method provides comprehensive membership-based visibility controls
      */
     public function get_enhanced_widget_data($post_id, $original_data = []) {
         $user_id = get_current_user_id();
+        $is_logged_in = is_user_logged_in();
         $post = get_post($post_id);
-        
+
         if (!$post) {
             return $original_data;
         }
 
+        // Base enhanced data
         $enhanced_data = [
             'post_id' => $post_id,
-            'is_logged_in' => $user_id > 0,
+            'is_logged_in' => $is_logged_in,
+            'user_id' => $user_id,
             'icon_base' => plugin_dir_url(__FILE__) . '../assets/img/',
         ];
 
-        // Get user membership info
-        if ($user_id && function_exists('khm_get_user_membership')) {
+        // Get user membership information
+        $membership = null;
+        $is_member = false;
+        $member_level = 'Guest';
+        $member_discount = 0;
+
+        if ($is_logged_in && function_exists('khm_get_user_membership')) {
             $membership = khm_get_user_membership($user_id);
-            $enhanced_data['membership'] = [
-                'is_member' => $membership ? true : false,
-                'level' => $membership->level_name ?? 'Guest',
-                'expires' => $membership->expires_at ?? null
-            ];
-        } else {
-            $enhanced_data['membership'] = [
-                'is_member' => false,
-                'level' => 'Guest',
-                'expires' => null
-            ];
+            $is_member = $membership !== null;
+            $member_level = $is_member ? ($membership->level_name ?? 'Member') : 'Guest';
+
+            // Get member discount for articles
+            $article_price = $original_data['price'] ?? 5.99;
+            if ($article_price > 0 && function_exists('khm_get_member_discount')) {
+                $discount_data = khm_get_member_discount($user_id, $article_price, 'article');
+                $member_discount = $discount_data['discount_percent'] ?? 0;
+            }
         }
 
-        // Get credits info
-        if ($user_id && function_exists('khm_get_user_credits')) {
-            $credits = khm_get_user_credits($user_id);
-            $enhanced_data['credits'] = [
-                'available' => $credits,
-                'can_download' => $credits > 0
-            ];
-        } else {
-            $enhanced_data['credits'] = [
-                'available' => 0,
-                'can_download' => false
-            ];
+        $enhanced_data['membership'] = [
+            'is_member' => $is_member,
+            'level' => $member_level,
+            'discount_percent' => $member_discount,
+            'expires' => $membership ? ($membership->expires_at ?? null) : null
+        ];
+
+        // Get credits information
+        $user_credits = 0;
+        $can_download_with_credits = false;
+
+        if ($is_logged_in && function_exists('khm_get_user_credits')) {
+            $user_credits = khm_get_user_credits($user_id);
+            $can_download_with_credits = $user_credits >= 1;
         }
+
+        $enhanced_data['credits'] = [
+            'available' => $user_credits,
+            'can_download' => $can_download_with_credits,
+            'cost_per_download' => 1,
+        ];
 
         // Get library status
-        if ($user_id && function_exists('khm_call_service')) {
-            $is_saved = khm_call_service('is_saved_to_library', $user_id, $post_id);
-            $enhanced_data['library'] = [
-                'is_saved' => $is_saved
-            ];
-        } else {
-            $enhanced_data['library'] = [
-                'is_saved' => false
-            ];
+        $is_saved_to_library = false;
+        if ($is_logged_in && function_exists('khm_call_service')) {
+            try {
+                $is_saved_to_library = khm_call_service('is_saved_to_library', $user_id, $post_id) ?: false;
+            } catch (Exception $e) {
+                $is_saved_to_library = false;
+            }
         }
 
-        // Get pricing info
+        $enhanced_data['library'] = [
+            'is_saved' => $is_saved_to_library,
+            'can_save' => $is_logged_in,
+        ];
+
+        // Get comprehensive pricing information
+        $original_price = $original_data['price'] ?? 5.99;
+        $member_price = $original_price;
+
+        if ($is_member && $member_discount > 0) {
+            $member_price = $original_price * (1 - $member_discount / 100);
+        }
+
+        // Try to get pricing from KHM service
         if (function_exists('khm_call_service')) {
-            $pricing = khm_call_service('get_article_pricing', $post_id, $user_id);
-            $enhanced_data['pricing'] = [
-                'regular_price' => $pricing['regular_price'] ?? 5.99,
-                'member_price' => $pricing['member_price'] ?? null,
-                'currency' => '$',
-                'is_purchasable' => $pricing['is_purchasable'] ?? true
-            ];
-        } else {
-            $enhanced_data['pricing'] = [
-                'regular_price' => 5.99,
-                'member_price' => null,
-                'currency' => '$',
-                'is_purchasable' => true
-            ];
+            try {
+                $pricing = khm_call_service('get_article_pricing', $post_id, $user_id);
+                if ($pricing) {
+                    $original_price = $pricing['regular_price'] ?? $original_price;
+                    $member_price = $pricing['member_price'] ?? $member_price;
+                }
+            } catch (Exception $e) {
+                // Use calculated prices
+            }
         }
 
-        // Share data
+        $enhanced_data['pricing'] = [
+            'original_price' => $original_price,
+            'member_price' => $member_price,
+            'currency' => '£', // Changed from $ to £ for UK market
+            'has_discount' => $member_discount > 0,
+            'discount_amount' => $original_price - $member_price,
+            'is_purchasable' => $original_price > 0,
+        ];
+
+        // Share data with affiliate support
+        $share_title = get_the_title($post_id);
+        $share_url = get_permalink($post_id);
+        $share_excerpt = wp_trim_words(get_the_excerpt($post_id), 20);
+
         $enhanced_data['share'] = [
-            'title' => $post->post_title,
-            'url' => get_permalink($post_id),
-            'excerpt' => wp_trim_words($post->post_content, 20)
+            'title' => $share_title,
+            'url' => $share_url,
+            'excerpt' => $share_excerpt,
+            'has_affiliate' => $is_logged_in && $is_member,
+        ];
+
+        // Feature visibility flags - core membership-based controls
+        $enhanced_data['features'] = [
+            'can_download' => $is_logged_in && ($can_download_with_credits || $is_member || $original_price == 0),
+            'can_save' => $is_logged_in,
+            'can_buy' => $original_price > 0,
+            'can_gift' => $is_logged_in && $is_member && $original_price > 0,
+            'can_share' => true, // Always available
+            'show_member_benefits' => $is_member,
+            'show_credit_balance' => $is_logged_in,
+            'show_login_prompt' => !$is_logged_in,
         ];
 
         return array_merge($original_data, $enhanced_data);
-    }
-
-    /**
+    }    /**
      * Handle send gift AJAX
      */
     public function handle_send_gift() {
