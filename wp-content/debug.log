@@ -425,3 +425,32 @@ Stack trace:
 #7 /Users/krisoldland/Documents/GitHub/1927MSuite/test_permissions.php(10): require_once('/Users/krisoldl...')
 #8 {main}
   thrown in /Users/krisoldland/Documents/GitHub/1927MSuite/wp-content/plugins/elementor/includes/plugin.php on line 715
+[17-Nov-2025 16:50:45 UTC] PHP Fatal error:  Uncaught Error: Class "Elementor\Core\Wp_Api" not found in /Users/krisoldland/Documents/GitHub/1927MSuite/wp-content/plugins/elementor/includes/plugin.php:715
+Stack trace:
+#0 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-content/plugins/elementor/includes/plugin.php(627): Elementor\Plugin->init_components()
+#1 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-includes/class-wp-hook.php(324): Elementor\Plugin->init('')
+#2 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-includes/class-wp-hook.php(348): WP_Hook->apply_filters(NULL, Array)
+#3 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-includes/plugin.php(517): WP_Hook->do_action(Array)
+#4 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-settings.php(727): do_action('init')
+#5 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-config.php(40): require_once('/Users/krisoldl...')
+#6 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-load.php(50): require_once('/Users/krisoldl...')
+#7 /private/tmp/run_lifecycle_demo.php(3): require('/Users/krisoldl...')
+#8 {main}
+  thrown in /Users/krisoldland/Documents/GitHub/1927MSuite/wp-content/plugins/elementor/includes/plugin.php on line 715
+[17-Nov-2025 17:22:07 UTC] PHP Fatal error:  Uncaught Error: Class "KH_SMMA\Services\LifecycleSimulator" not found in /private/tmp/run_lifecycle_demo.php:33
+Stack trace:
+#0 {main}
+  thrown in /private/tmp/run_lifecycle_demo.php on line 33
+[17-Nov-2025 17:22:29 UTC] PHP Fatal error:  Uncaught Error: Class "KH_SMMA\Services\LifecycleSimulator" not found in /private/tmp/run_lifecycle_demo.php:50
+Stack trace:
+#0 {main}
+  thrown in /private/tmp/run_lifecycle_demo.php on line 50
+[17-Nov-2025 17:22:54 UTC] PHP Fatal error:  Uncaught Error: Class "KH_SMMA\Services\LifecycleSimulator" not found in /private/tmp/run_lifecycle_demo.php:53
+Stack trace:
+#0 {main}
+  thrown in /private/tmp/run_lifecycle_demo.php on line 53
+[17-Nov-2025 21:16:52 UTC] PHP Warning:  require_once(wp-content/plugins/kh-events/includes/interface-kh-events-service-provider.php): Failed to open stream: No such file or directory in Command line code on line 3
+[17-Nov-2025 21:16:52 UTC] PHP Fatal error:  Uncaught Error: Failed opening required 'wp-content/plugins/kh-events/includes/interface-kh-events-service-provider.php' (include_path='.:/usr/local/Cellar/php@8.1/8.1.33/share/php@8.1/pear') in Command line code:3
+Stack trace:
+#0 {main}
+  thrown in Command line code on line 3

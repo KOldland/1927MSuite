@@ -6,14 +6,24 @@ use KH_SMMA\PostTypes\SocialCampaignPostType;
 use KH_SMMA\PostTypes\SocialSchedulePostType;
 use KH_SMMA\Meta\MetaRegistrar;
 use KH_SMMA\Admin\AdminInterface;
+use KH_SMMA\Admin\AuditLogPage;
+use KH_SMMA\Admin\CapabilitySettingsPage;
 use KH_SMMA\Services\ScheduleQueueProcessor;
 use KH_SMMA\Services\TokenRepository;
+use KH_SMMA\Services\AuditLogger;
+use KH_SMMA\Services\AnalyticsFeedbackService;
+use KH_SMMA\Services\LifecycleSimulator;
+use KH_SMMA\Services\EngagementMetricsService;
 use KH_SMMA\Security\CredentialVault;
+use KH_SMMA\Security\CapabilityManager;
+use KH_SMMA\Integration\MarketingSuiteBridge;
+use KH_SMMA\Integration\SocialStripBridge;
 use KH_SMMA\Adapters\ManualExportAdapter;
 use KH_SMMA\Adapters\MetaChannelAdapter;
 use KH_SMMA\Adapters\LinkedInChannelAdapter;
 use KH_SMMA\Adapters\TwitterChannelAdapter;
 use KH_SMMA\OAuth\OAuthManager;
+use KH_SMMA\CLI\LifecycleSimulatorCommand;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -31,6 +41,31 @@ class Plugin {
     private $vault;
 
     /**
+     * @var \KH_SMMA\Services\AuditLogger
+     */
+    private $audit_logger;
+
+    /**
+     * @var \KH_SMMA\Security\CapabilityManager
+     */
+    private $capability_manager;
+
+    /**
+     * @var AnalyticsFeedbackService
+     */
+    private $analytics_feedback;
+
+    /**
+     * @var EngagementMetricsService
+     */
+    private $engagement_metrics;
+
+    /**
+     * @var LifecycleSimulator
+     */
+    private $lifecycle_simulator;
+
+    /**
      * Primary bootstrap entrypoint.
      */
     public function register() {
@@ -41,7 +76,10 @@ class Plugin {
         $this->register_hooks();
         $this->register_admin();
         $this->register_services();
+        $this->register_integrations();
         $this->register_oauth();
+        $this->register_cli();
+        $this->capability_manager->register();
     }
 
     /**
@@ -69,8 +107,13 @@ class Plugin {
     private function bootstrap_services() {
         global $wpdb;
 
-        $this->vault            = new CredentialVault();
-        $this->token_repository = new TokenRepository( $wpdb, $this->vault );
+        $this->vault               = new CredentialVault();
+        $this->token_repository    = new TokenRepository( $wpdb, $this->vault );
+        $this->audit_logger        = new AuditLogger( $wpdb );
+        $this->capability_manager  = new CapabilityManager();
+        $this->analytics_feedback  = new AnalyticsFeedbackService();
+        $this->lifecycle_simulator = new LifecycleSimulator();
+        $this->engagement_metrics  = new EngagementMetricsService();
     }
 
     /**
@@ -93,22 +136,37 @@ class Plugin {
      * Register admin UI handlers.
      */
     private function register_admin() {
-        ( new AdminInterface( $this->token_repository ) )->register();
+        global $wpdb;
+
+        ( new AdminInterface( $this->token_repository, $this->audit_logger, $this->analytics_feedback, $this->lifecycle_simulator ) )->register();
+        ( new AuditLogPage( $wpdb ) )->register();
+        ( new CapabilitySettingsPage() )->register();
     }
 
     /**
      * Register queue services and channel adapters.
      */
     private function register_services() {
-        ( new ScheduleQueueProcessor( $this->token_repository ) )->register();
+        ( new ScheduleQueueProcessor( $this->token_repository, $this->audit_logger ) )->register();
+        $this->analytics_feedback->register();
+        $this->engagement_metrics->register();
         ( new ManualExportAdapter() )->register();
         ( new MetaChannelAdapter( $this->token_repository ) )->register();
         ( new LinkedInChannelAdapter( $this->token_repository ) )->register();
         ( new TwitterChannelAdapter( $this->token_repository ) )->register();
     }
 
+    private function register_integrations() {
+        ( new MarketingSuiteBridge() )->register();
+        ( new SocialStripBridge() )->register();
+    }
+
     private function register_oauth() {
         ( new OAuthManager( $this->token_repository ) )->register();
+    }
+
+    private function register_cli() {
+        ( new LifecycleSimulatorCommand( $this->lifecycle_simulator, $this->analytics_feedback ) )->register();
     }
 
     /**

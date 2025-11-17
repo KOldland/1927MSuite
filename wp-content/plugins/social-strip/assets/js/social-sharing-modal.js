@@ -398,6 +398,7 @@
                 showMessage('🎯 Sharing with your affiliate tracking!', 'success');
             }
             
+            trackShare(platform, shareData, optimizedContent);
             performPlatformShare(platform, shareData, optimizedContent);
         });
     }
@@ -492,6 +493,52 @@
             });
         }, 3000);
     }
+
+    /**
+     * Send share telemetry to the backend so SMMA/PPC systems can react.
+     */
+    function trackShare(platform, data, optimizedContent) {
+        if (typeof kssKhm === 'undefined' || !kssKhm.ajaxUrl) {
+            return Promise.resolve();
+        }
+
+        const payload = new URLSearchParams();
+        payload.append('action', 'kss_track_share');
+        if (kssKhm.nonce) {
+            payload.append('nonce', kssKhm.nonce);
+        }
+        payload.append('platform', platform);
+        payload.append('post_id', data.post_id || data.id || 0);
+        payload.append('url', data.url || '');
+        payload.append('content', optimizedContent.text || '');
+        payload.append('char_count', optimizedContent.charCount || (optimizedContent.text || '').length || 0);
+        payload.append('source', data.share_source || 'social_strip_modal');
+
+        if (optimizedContent.hashtags && optimizedContent.hashtags.length) {
+            optimizedContent.hashtags.forEach(tag => payload.append('hashtags[]', tag));
+        }
+
+        if (data.affiliate_id) {
+            payload.append('meta[affiliate_id]', data.affiliate_id);
+        }
+        if (data.campaign) {
+            payload.append('meta[campaign]', data.campaign);
+        }
+        if (data.account) {
+            payload.append('meta[account]', data.account);
+        }
+
+        return fetch(kssKhm.ajaxUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            body: payload.toString()
+        }).catch(() => {
+            // Silently ignore telemetry errors to avoid blocking sharing.
+        });
+    }
     
     // Expose enhanced functions globally
     window.kssEnhanced = {
@@ -501,6 +548,7 @@
         handleShare: enhancedHandleShare,
         loadAffiliateUrl: loadAffiliateUrl,
         showMessage: showMessage,
+        trackShare: trackShare,
         PLATFORM_CONFIG: PLATFORM_CONFIG
     };
     

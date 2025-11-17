@@ -42,6 +42,81 @@ class KSS_Ajax_Handlers {
         // Affiliate tracking handlers
         add_action('wp_ajax_kss_track_affiliate_click', [$this, 'handle_affiliate_click']);
         add_action('wp_ajax_nopriv_kss_track_affiliate_click', [$this, 'handle_affiliate_click']);
+
+        // Share telemetry handler
+        add_action('wp_ajax_kss_track_share', [$this, 'handle_track_share']);
+        add_action('wp_ajax_nopriv_kss_track_share', [$this, 'handle_track_share']);
+    }
+
+    /**
+     * Track social share events so other systems (SMMA, PPC, analytics) can react.
+     */
+    public function handle_track_share() {
+        check_ajax_referer('kss_modal_nonce', 'nonce');
+
+        $platform = sanitize_key($_POST['platform'] ?? '');
+        $post_id  = absint($_POST['post_id'] ?? 0);
+        $share_url = esc_url_raw($_POST['url'] ?? '');
+        $content  = isset($_POST['content']) ? sanitize_textarea_field(wp_unslash($_POST['content'])) : '';
+        $char_count = absint($_POST['char_count'] ?? strlen($content));
+        $source   = sanitize_key($_POST['source'] ?? 'social_strip_modal');
+
+        if (empty($platform) || empty($share_url)) {
+            wp_send_json_error('Missing share context');
+        }
+
+        $hashtags = $_POST['hashtags'] ?? [];
+        if (!is_array($hashtags)) {
+            $hashtags = [$hashtags];
+        }
+        $hashtags = array_values(array_filter(array_map(function($tag) {
+            return sanitize_text_field(wp_unslash($tag));
+        }, $hashtags)));
+
+        $meta = [];
+        if (!empty($_POST['meta']) && is_array($_POST['meta'])) {
+            foreach ($_POST['meta'] as $key => $value) {
+                $meta[sanitize_key($key)] = sanitize_text_field(wp_unslash($value));
+            }
+        }
+
+        $share_event = [
+            'platform'   => $platform,
+            'post_id'    => $post_id,
+            'share_url'  => $share_url,
+            'content'    => $content,
+            'hashtags'   => $hashtags,
+            'char_count' => $char_count,
+            'user_id'    => get_current_user_id(),
+            'timestamp'  => current_time('mysql'),
+            'ip'         => $_SERVER['REMOTE_ADDR'] ?? '',
+            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+            'meta'       => $meta,
+            'source'     => $source,
+        ];
+
+        if ($post_id) {
+            $events = get_post_meta($post_id, '_kss_share_events', true);
+            if (!is_array($events)) {
+                $events = [];
+            }
+            array_unshift($events, $share_event);
+            if (count($events) > 25) {
+                $events = array_slice($events, 0, 25);
+            }
+            update_post_meta($post_id, '_kss_share_events', $events);
+        }
+
+        /**
+         * Allow external systems (SMMA/PPC/Analytics) to react to share events.
+         *
+         * @since 1.3
+         *
+         * @param array $share_event Details about the share event.
+         */
+        do_action('kss_share_tracked', $share_event);
+
+        wp_send_json_success(['logged' => true]);
     }
 
     /**

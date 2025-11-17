@@ -32,11 +32,10 @@
         <?php endif; ?>
         
         <?php if ($button_text && $button_url): ?>
-        <a href="<?= esc_url($button_url) ?>" class="card-ad-button"
+        <a href="<?= esc_url($button_url) ?>" class="card-ad-button" data-kh-ad-click="<?= esc_attr($context['ad_id'] ?? '') ?>"
             style="background:<?= esc_attr($btn_bg) ?>; color:<?= esc_attr($btn_text) ?>;">
             <?= esc_html($button_text) ?>
         </a>
         <?php endif; ?>
     </div>
 </div>
-
