@@ -44,6 +44,7 @@ class KH_Events {
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-rest-api.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-timezone.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-gdpr.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-event-permissions.php';
 
         new KH_Event_Meta();
         new KH_Location_Meta();
@@ -58,6 +59,7 @@ class KH_Events {
         KH_Event_REST_API::instance();
         KH_Event_Timezone::instance();
         KH_Event_GDPR::instance();
+        KH_Event_Permissions::instance();
 
         // Register widget
         add_action('widgets_init', array($this, 'register_widgets'));

@@ -413,3 +413,15 @@ Stack trace:
 #7 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-content/plugins/kh-events/test-new-features.php(7): require_once('/Users/krisoldl...')
 #8 {main}
   thrown in /Users/krisoldland/Documents/GitHub/1927MSuite/wp-content/plugins/elementor/includes/plugin.php on line 715
+[17-Nov-2025 10:01:08 UTC] PHP Fatal error:  Uncaught Error: Class "Elementor\Core\Wp_Api" not found in /Users/krisoldland/Documents/GitHub/1927MSuite/wp-content/plugins/elementor/includes/plugin.php:715
+Stack trace:
+#0 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-content/plugins/elementor/includes/plugin.php(627): Elementor\Plugin->init_components()
+#1 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-includes/class-wp-hook.php(324): Elementor\Plugin->init('')
+#2 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-includes/class-wp-hook.php(348): WP_Hook->apply_filters(NULL, Array)
+#3 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-includes/plugin.php(517): WP_Hook->do_action(Array)
+#4 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-settings.php(727): do_action('init')
+#5 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-config.php(40): require_once('/Users/krisoldl...')
+#6 /Users/krisoldland/Documents/GitHub/1927MSuite/wp-load.php(50): require_once('/Users/krisoldl...')
+#7 /Users/krisoldland/Documents/GitHub/1927MSuite/test_permissions.php(10): require_once('/Users/krisoldl...')
+#8 {main}
+  thrown in /Users/krisoldland/Documents/GitHub/1927MSuite/wp-content/plugins/elementor/includes/plugin.php on line 715

@@ -209,6 +209,40 @@ class KH_Events_Admin_Settings {
             'kh_events_payment_section'
         );
 
+        // Permissions Settings
+        register_setting('kh_events_permissions', 'kh_events_permissions_settings', array($this, 'sanitize_permissions_settings'));
+
+        add_settings_section(
+            'kh_events_permissions_section',
+            __('Advanced Permissions Settings', 'kh-events'),
+            array($this, 'permissions_section_callback'),
+            'kh_events_permissions'
+        );
+
+        add_settings_field(
+            'kh_events_enable_advanced_permissions',
+            __('Enable Advanced Permissions', 'kh-events'),
+            array($this, 'enable_advanced_permissions_field_callback'),
+            'kh_events_permissions',
+            'kh_events_permissions_section'
+        );
+
+        add_settings_field(
+            'kh_events_default_user_group',
+            __('Default User Group', 'kh-events'),
+            array($this, 'default_user_group_field_callback'),
+            'kh_events_permissions',
+            'kh_events_permissions_section'
+        );
+
+        add_settings_field(
+            'kh_events_group_permissions',
+            __('Group Permissions', 'kh-events'),
+            array($this, 'group_permissions_field_callback'),
+            'kh_events_permissions',
+            'kh_events_permissions_section'
+        );
+
         // GDPR Settings
         register_setting('kh_events_gdpr', 'kh_events_gdpr_settings', array($this, 'sanitize_gdpr_settings'));
 
@@ -272,6 +306,7 @@ class KH_Events_Admin_Settings {
             'booking' => __('Booking', 'kh-events'),
             'display' => __('Display', 'kh-events'),
             'payment' => __('Payment', 'kh-events'),
+            'permissions' => __('Permissions', 'kh-events'),
             'gdpr' => __('GDPR', 'kh-events'),
         );
 
@@ -307,6 +342,10 @@ class KH_Events_Admin_Settings {
                     case 'payment':
                         settings_fields('kh_events_payment');
                         do_settings_sections('kh_events_payment');
+                        break;
+                    case 'permissions':
+                        settings_fields('kh_events_permissions');
+                        do_settings_sections('kh_events_permissions');
                         break;
                     case 'gdpr':
                         settings_fields('kh_events_gdpr');
@@ -631,5 +670,106 @@ class KH_Events_Admin_Settings {
 
     public static function get_gdpr_option($key, $default = '') {
         return self::get_option('gdpr', $key, $default);
+    }
+
+    // Permissions Settings Callbacks
+
+    public function sanitize_permissions_settings($settings) {
+        $sanitized = array();
+
+        $sanitized['enable_advanced_permissions'] = isset($settings['enable_advanced_permissions']) ? 1 : 0;
+        $sanitized['default_user_group'] = sanitize_text_field($settings['default_user_group'] ?? 'kh_viewer');
+
+        if (isset($settings['group_permissions']) && is_array($settings['group_permissions'])) {
+            $sanitized['group_permissions'] = array();
+            foreach ($settings['group_permissions'] as $group => $permissions) {
+                $sanitized['group_permissions'][sanitize_text_field($group)] = array_map('intval', $permissions);
+            }
+        }
+
+        return $sanitized;
+    }
+
+    public function permissions_section_callback() {
+        echo '<p>' . __('Configure advanced permissions and user group restrictions for the KH Events plugin.', 'kh-events') . '</p>';
+    }
+
+    public function enable_advanced_permissions_field_callback() {
+        $settings = get_option('kh_events_permissions_settings', array());
+        $enabled = $settings['enable_advanced_permissions'] ?? 0;
+
+        echo '<input type="checkbox" name="kh_events_permissions_settings[enable_advanced_permissions]" value="1" ' . checked(1, $enabled, false) . '>';
+        echo '<label for="kh_events_permissions_settings[enable_advanced_permissions]">' . __('Enable advanced role-based permissions and user group restrictions', 'kh-events') . '</label>';
+        echo '<p class="description">' . __('When enabled, users will be assigned to groups with specific permissions. When disabled, standard WordPress roles apply.', 'kh-events') . '</p>';
+    }
+
+    public function default_user_group_field_callback() {
+        $settings = get_option('kh_events_permissions_settings', array());
+        $default_group = $settings['default_user_group'] ?? 'kh_viewer';
+
+        if (!class_exists('KH_Event_Permissions')) {
+            require_once KH_EVENTS_DIR . 'includes/class-kh-event-permissions.php';
+        }
+
+        $permissions = KH_Event_Permissions::instance();
+        $groups = $permissions->get_available_groups();
+
+        echo '<select name="kh_events_permissions_settings[default_user_group]">';
+        foreach ($groups as $slug => $name) {
+            echo '<option value="' . esc_attr($slug) . '" ' . selected($default_group, $slug, false) . '>' . esc_html($name) . '</option>';
+        }
+        echo '</select>';
+        echo '<p class="description">' . __('Default user group assigned to new users.', 'kh-events') . '</p>';
+    }
+
+    public function group_permissions_field_callback() {
+        if (!class_exists('KH_Event_Permissions')) {
+            require_once KH_EVENTS_DIR . 'includes/class-kh-event-permissions.php';
+        }
+
+        $permissions = KH_Event_Permissions::instance();
+        $groups = $permissions->get_available_groups();
+        $group_permissions = $permissions->get_group_permissions();
+
+        $permission_labels = array(
+            'can_create_events' => __('Create Events', 'kh-events'),
+            'can_edit_events' => __('Edit Events', 'kh-events'),
+            'can_delete_events' => __('Delete Events', 'kh-events'),
+            'can_view_bookings' => __('View Bookings', 'kh-events'),
+            'can_manage_bookings' => __('Manage Bookings', 'kh-events'),
+            'can_view_reports' => __('View Reports', 'kh-events'),
+            'can_manage_users' => __('Manage Users', 'kh-events'),
+        );
+
+        echo '<div class="kh-permissions-matrix">';
+        echo '<table class="widefat">';
+        echo '<thead>';
+        echo '<tr>';
+        echo '<th>' . __('User Group', 'kh-events') . '</th>';
+        foreach ($permission_labels as $permission => $label) {
+            echo '<th>' . esc_html($label) . '</th>';
+        }
+        echo '</tr>';
+        echo '</thead>';
+        echo '<tbody>';
+
+        foreach ($groups as $group_slug => $group_name) {
+            echo '<tr>';
+            echo '<td><strong>' . esc_html($group_name) . '</strong></td>';
+
+            foreach ($permission_labels as $permission => $label) {
+                $checked = isset($group_permissions[$group_slug][$permission]) && $group_permissions[$group_slug][$permission] ? 'checked' : '';
+                echo '<td>';
+                echo '<input type="checkbox" name="kh_events_permissions_settings[group_permissions][' . esc_attr($group_slug) . '][' . esc_attr($permission) . ']" value="1" ' . $checked . '>';
+                echo '</td>';
+            }
+
+            echo '</tr>';
+        }
+
+        echo '</tbody>';
+        echo '</table>';
+        echo '</div>';
+        echo '<p class="description">' . __('Configure permissions for each user group. Changes take effect immediately.', 'kh-events') . '</p>';
     }
 }

@@ -6,11 +6,12 @@
         list: '#kh-folders-list',
         notice: '#kh-folders-notices',
         bulkDelete: '[data-kh-folders-bulk-delete]',
-        selectAll: '#kh-folders-select-all'
+        selectAll: '#kh-folders-select-all',
+        treeList: '.kh-folder-tree-list'
     };
 
     var state = {
-        folders: []
+        folders: window.khFoldersAdmin.folders || []
     };
 
     function notify(message, type) {
@@ -44,10 +45,11 @@
     }
 
     function folderRowTemplate(folder) {
+        var badge = folder.shared ? '' : '<span class="kh-folder-badge">' + window.khFoldersAdmin.strings.personal + '</span>';
         return [
             '<tr data-kh-folder-row data-term-id="' + folder.term_id + '">',
             '<td class="column-handle"><span class="kh-folder-drag dashicons dashicons-move" title="' + window.khFoldersAdmin.strings.drag + '"></span></td>',
-            '<td>' + esc(folder.name) + '</td>',
+            '<td>' + esc(folder.name) + ' ' + badge + '</td>',
             '<td><input type="color" value="' + folder.color + '" data-kh-folder-color="' + folder.term_id + '"></td>',
             '<td><input type="number" class="small-text" value="' + folder.order + '" data-kh-folder-order="' + folder.term_id + '"></td>',
             '<td><button class="button button-link-delete" data-kh-folder-delete="' + folder.term_id + '">' + window.khFoldersAdmin.strings.deleteLabel + '</button></td>',
@@ -89,6 +91,7 @@
             return folder.term_id !== termId;
         });
         renderList();
+        removeTreeNode(termId);
     }
 
     function updateFolder(updated) {
@@ -152,7 +155,14 @@
             return;
         }
 
-        sendAjax('kh_folders_create', { name: folderName })
+        var shared = true;
+        if (!window.khFoldersAdmin.permissions.canShare) {
+            shared = false;
+        } else {
+            shared = window.confirm(window.khFoldersAdmin.i18n.confirmShared);
+        }
+
+        sendAjax('kh_folders_create', { name: folderName, shared: shared ? 1 : 0 })
             .done(function (response) {
                 if (!response || !response.success) {
                     notify(response && response.data ? response.data.message || response.data : 'Unknown error', 'error');
@@ -160,6 +170,7 @@
                 }
 
                 addFolder(response.data);
+                appendTreeNode(response.data, shared ? 0 : window.khFoldersAdmin.permissions.userId);
                 notify(window.khFoldersAdmin.i18n.created.replace('%s', response.data.name), 'success');
             });
     }
@@ -261,8 +272,117 @@
                     return deleted.indexOf(folder.term_id) === -1;
                 });
                 renderList();
+                deleted.forEach(removeTreeNode);
                 notify(window.khFoldersAdmin.strings.bulkDeleted, 'success');
             });
+    }
+
+    function initTree() {
+        var $trees = $(selectors.treeList);
+        if (! $trees.length) {
+            return;
+        }
+
+        $trees.each(function () {
+            var $list = $(this);
+            if ($list.hasClass('ui-sortable')) {
+                $list.sortable('destroy');
+            }
+            $list.sortable({
+                connectWith: selectors.treeList,
+                placeholder: 'kh-folder-tree-placeholder',
+                start: function (event, ui) {
+                    var $parentNode = ui.item.parent().closest('.kh-folder-tree-node');
+                    ui.item.data('old-parent', $parentNode.length ? parseInt($parentNode.data('term-id'), 10) : 0);
+                },
+                stop: handleTreeDrop,
+                handle: '.kh-folder-tree-item'
+            });
+        });
+
+        $(document).on('click', '.kh-folder-toggle', function () {
+            var $button = $(this);
+            var expanded = $button.attr('aria-expanded') === 'true';
+            var $children = $('#' + $button.attr('aria-controls'));
+            if ($children.length) {
+                $children.toggle(!expanded);
+                $button.attr('aria-expanded', expanded ? 'false' : 'true');
+                $button.find('.dashicons').toggleClass('dashicons-arrow-right', expanded).toggleClass('dashicons-arrow-down', !expanded);
+            }
+        });
+    }
+
+    function handleTreeDrop(event, ui) {
+        var $item = ui.item;
+        var termId = parseInt($item.data('term-id'), 10);
+        if (!termId) {
+            return;
+        }
+
+        var $parentNode = $item.parent().closest('.kh-folder-tree-node');
+        var parentId = $parentNode.length ? parseInt($parentNode.data('term-id'), 10) : 0;
+        var oldParent = parseInt($item.data('old-parent'), 10) || 0;
+        var siblings = $item.parent().children().map(function () {
+            return $(this).data('term-id');
+        }).get();
+
+        sendAjax('kh_folders_update_parent', {
+            term_id: termId,
+            parent_id: parentId,
+            siblings: siblings
+        }).done(function (response) {
+            if (!response || !response.success) {
+                notify(response && response.data ? response.data.message || response.data : 'Unknown error', 'error');
+                return;
+            }
+
+            updateFolder(response.data);
+            ensureToggleForNode($parentNode);
+            if (oldParent !== parentId) {
+                ensureToggleForNode($('.kh-folder-tree-node[data-term-id=\"' + oldParent + '\"]'));
+            }
+            notify(window.khFoldersAdmin.strings.parentUpdated, 'success');
+        });
+    }
+
+    function appendTreeNode(folder, owner) {
+        owner = owner || 0;
+        var $tree = $(selectors.treeList).first();
+        if (!$tree.length) {
+            return;
+        }
+
+        var html = '<li class="kh-folder-tree-node" data-term-id="' + folder.term_id + '" data-owner="' + owner + '" data-shared="' + (folder.shared ? '1' : '0') + '"><div class="kh-folder-tree-item"><span class="kh-folder-toggle is-empty" aria-controls="kh-folder-children-' + folder.term_id + '"></span><span class="kh-folder-tree-label">' + esc(folder.name) + '</span></div><ul id="kh-folder-children-' + folder.term_id + '" class="kh-folder-tree-list kh-folder-tree-children"></ul></li>';
+        $tree.append(html);
+        initTree();
+        ensureToggleForNode($tree.closest('.kh-folder-tree-node'));
+    }
+
+    function removeTreeNode(termId) {
+        var $node = $('.kh-folder-tree-node[data-term-id="' + termId + '"]');
+        var $parentList = $node.parent();
+        $node.remove();
+        if ($parentList.length && !$parentList.children().length) {
+            var $parentNode = $parentList.closest('.kh-folder-tree-node');
+            ensureToggleForNode($parentNode);
+        }
+    }
+
+    function ensureToggleForNode($node) {
+        if (!$node || !$node.length) {
+            return;
+        }
+
+        var $children = $node.children('.kh-folder-tree-children');
+        var hasChildren = $children.children().length > 0;
+        var $toggle = $node.children('.kh-folder-tree-item').find('.kh-folder-toggle').first();
+        var controlId = 'kh-folder-children-' + $node.data('term-id');
+
+        if (hasChildren && $toggle.hasClass('is-empty')) {
+            $toggle.replaceWith('<button type="button" class="kh-folder-toggle" aria-expanded="true" aria-controls="' + controlId + '"><span class="dashicons dashicons-arrow-down"></span></button>');
+        } else if (!hasChildren && !$toggle.hasClass('is-empty')) {
+            $toggle.replaceWith('<span class="kh-folder-toggle is-empty" aria-controls="' + controlId + '"></span>');
+        }
     }
 
     function bindUI() {
@@ -275,6 +395,7 @@
 
         state.folders = window.khFoldersAdmin.folders || [];
         renderList();
+        initTree();
 
         $createButton.on('click', handleCreateClick);
         $(document)

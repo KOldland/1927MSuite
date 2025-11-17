@@ -32,6 +32,13 @@ class ListTableModule implements ModuleInterface
             return;
         }
 
+        $visibleFolders = FolderService::getFolders(['user_id' => get_current_user_id()]);
+        if (empty($visibleFolders)) {
+            return;
+        }
+
+        $include = wp_list_pluck($visibleFolders, 'term_id');
+
         $selected = isset($_GET['kh_folder']) ? absint($_GET['kh_folder']) : 0; // phpcs:ignore WordPress.Security.NonceVerification
 
         wp_dropdown_categories([
@@ -44,6 +51,7 @@ class ListTableModule implements ModuleInterface
             'depth'           => 3,
             'show_count'      => true,
             'hide_empty'      => false,
+            'include'         => $include,
         ]);
     }
 

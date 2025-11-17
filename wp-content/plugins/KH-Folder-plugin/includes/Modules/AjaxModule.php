@@ -14,6 +14,7 @@ class AjaxModule implements ModuleInterface
         add_action('wp_ajax_kh_folders_update_meta', [$this, 'handleUpdateMeta']);
         add_action('wp_ajax_kh_folders_reorder', [$this, 'handleReorderFolders']);
         add_action('wp_ajax_kh_folders_bulk_delete', [$this, 'handleBulkDelete']);
+        add_action('wp_ajax_kh_folders_update_parent', [$this, 'handleUpdateParent']);
     }
 
     private function authorize()
@@ -57,8 +58,12 @@ class AjaxModule implements ModuleInterface
         }
 
         $parent = isset($_POST['parent']) ? absint($_POST['parent']) : 0;
+        $shared = isset($_POST['shared']) ? (bool) $_POST['shared'] : true;
 
-        $result = FolderService::createFolder($name, $parent);
+        $result = FolderService::createFolder($name, $parent, [
+            'shared' => $shared,
+            'owner'  => get_current_user_id(),
+        ]);
         if (is_wp_error($result)) {
             $status = $result->get_error_data() && is_numeric($result->get_error_data()) ? (int) $result->get_error_data() : 400;
             $this->sendError($result->get_error_message(), $status, $result->get_error_code());
@@ -211,5 +216,37 @@ class AjaxModule implements ModuleInterface
         wp_send_json_success([
             'deleted' => $deleted,
         ]);
+    }
+
+    public function handleUpdateParent()
+    {
+        $authorized = $this->authorize();
+        if (is_wp_error($authorized)) {
+            $this->sendError(
+                $authorized->get_error_message(),
+                (int) $authorized->get_error_data() ?: 400,
+                $authorized->get_error_code()
+            );
+        }
+
+        $termId   = isset($_POST['term_id']) ? absint($_POST['term_id']) : 0;
+        $parentId = isset($_POST['parent_id']) ? absint($_POST['parent_id']) : 0;
+
+        if (! $termId) {
+            $this->sendError(__('Folder ID is required.', 'kh-folders'));
+        }
+
+        $term = FolderService::updateParent($termId, $parentId);
+        if (is_wp_error($term)) {
+            $status = $term->get_error_data() && is_numeric($term->get_error_data()) ? (int) $term->get_error_data() : 400;
+            $this->sendError($term->get_error_message(), $status, $term->get_error_code());
+        }
+
+        if (isset($_POST['siblings'])) {
+            $siblings = is_array($_POST['siblings']) ? $_POST['siblings'] : explode(',', sanitize_text_field(wp_unslash($_POST['siblings'])));
+            FolderService::reorderFolders($siblings);
+        }
+
+        wp_send_json_success(FolderService::formatFolderData($term));
     }
 }

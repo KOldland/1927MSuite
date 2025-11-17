@@ -24,10 +24,12 @@ $autoloader->register();
 function kh_folders_bootstrap()
 {
     $plugin = KHFolders\Core\Plugin::instance();
+    $plugin->registry()->add(new KHFolders\Modules\PermissionsModule());
     $plugin->registry()->add(new KHFolders\Modules\TaxonomyModule());
     $plugin->registry()->add(new KHFolders\Modules\AjaxModule());
     $plugin->registry()->add(new KHFolders\Modules\AssetsModule());
     $plugin->registry()->add(new KHFolders\Modules\ListTableModule());
+    $plugin->registry()->add(new KHFolders\Modules\ImportExportModule());
     $plugin->registry()->add(new KHFolders\Modules\MediaModule());
     $plugin->registry()->add(new KHFolders\Modules\AdminModule());
     $plugin->boot();

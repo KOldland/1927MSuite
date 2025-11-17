@@ -53,6 +53,34 @@ class KH_Event_Bookings {
         ));
     }
 
+    public function add_booking_meta_boxes() {
+        // Check permissions before adding meta boxes
+        if (class_exists('KH_Event_Permissions')) {
+            $permissions = KH_Event_Permissions::instance();
+            if (!$permissions->can_view_bookings(true)) {
+                return;
+            }
+        }
+
+        add_meta_box(
+            'kh_booking_details',
+            __('Booking Details', 'kh-events'),
+            array($this, 'render_booking_meta_box'),
+            'kh_booking',
+            'normal',
+            'high'
+        );
+
+        add_meta_box(
+            'kh_booking_actions',
+            __('Booking Actions', 'kh-events'),
+            array($this, 'render_booking_actions_meta_box'),
+            'kh_booking',
+            'side',
+            'high'
+        );
+    }
+
     public function render_booking_meta_box($post) {
         $event_id = get_post_meta($post->ID, '_kh_booking_event_id', true);
         $attendee_name = get_post_meta($post->ID, '_kh_booking_attendee_name', true);

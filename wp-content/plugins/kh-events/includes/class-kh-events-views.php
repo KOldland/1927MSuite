@@ -164,6 +164,15 @@ class KH_Events_Views {
             return;
         }
 
+        // Check permissions for event creation
+        if (class_exists('KH_Event_Permissions')) {
+            $permissions = KH_Event_Permissions::instance();
+            if (!$permissions->can_create_event(true)) {
+                wp_send_json_error(array('message' => __('You do not have permission to submit events.', 'kh-events')));
+                return;
+            }
+        }
+
         // Validate required fields
         $required_fields = array('title', 'description', 'start_date', 'start_time');
         foreach ($required_fields as $field) {
@@ -1078,6 +1087,16 @@ class KH_Events_Views {
                    __('You must be logged in to submit events.', 'kh-events') .
                    ' <a href="' . wp_login_url(get_permalink()) . '">' . __('Login', 'kh-events') . '</a>' .
                    '</div>';
+        }
+
+        // Check permissions for event creation
+        if (class_exists('KH_Event_Permissions')) {
+            $permissions = KH_Event_Permissions::instance();
+            if (!$permissions->can_create_event(true)) {
+                return '<div class="kh-events-notice kh-events-notice-error">' .
+                       __('You do not have permission to submit events.', 'kh-events') .
+                       '</div>';
+            }
         }
 
         ob_start();

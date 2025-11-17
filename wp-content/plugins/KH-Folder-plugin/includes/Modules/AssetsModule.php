@@ -1,6 +1,7 @@
 <?php
 namespace KHFolders\Modules;
 
+use KHFolders\Core\Permissions;
 use KHFolders\Services\FolderService;
 
 class AssetsModule implements ModuleInterface
@@ -35,14 +36,22 @@ class AssetsModule implements ModuleInterface
         wp_enqueue_style('kh-folders-admin');
         wp_enqueue_script('kh-folders-admin');
 
+        $userId   = get_current_user_id();
+        $folders  = FolderService::getFolders(['user_id' => $userId]);
+
         wp_localize_script('kh-folders-admin', 'khFoldersAdmin', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce'   => wp_create_nonce('kh_folders_actions'),
             'taxonomy'=> TaxonomyModule::TAXONOMY,
-            'folders' => FolderService::getFolders(),
+            'folders' => $folders,
+            'permissions' => [
+                'canShare' => Permissions::canManageShared($userId),
+                'userId'   => $userId,
+            ],
             'i18n'    => [
                 'enterName' => __('Enter a folder name', 'kh-folders'),
                 'created'   => __('Folder "%s" created', 'kh-folders'),
+                'confirmShared' => __('Make this folder shared? Click Cancel for a personal folder.', 'kh-folders'),
                 ],
             'noticeSuccess' => apply_filters('kh_folders_notice_success_callback', null),
             'noticeError'   => apply_filters('kh_folders_notice_error_callback', null),
@@ -56,6 +65,8 @@ class AssetsModule implements ModuleInterface
                 'bulkConfirm' => __('Delete selected folders? This cannot be undone.', 'kh-folders'),
                 'reordered'   => __('Folder order saved.', 'kh-folders'),
                 'drag'        => __('Drag to reorder', 'kh-folders'),
+                'personal'    => __('Personal', 'kh-folders'),
+                'parentUpdated' => __('Folder parent updated.', 'kh-folders'),
             ],
         ]);
     }
