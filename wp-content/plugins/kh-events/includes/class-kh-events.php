@@ -45,6 +45,10 @@ class KH_Events {
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-timezone.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-gdpr.php';
         require_once KH_EVENTS_DIR . 'includes/class-kh-event-permissions.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-event-integrations.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-event-analytics.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-events-woocommerce-bridge.php';
+        require_once KH_EVENTS_DIR . 'includes/class-kh-events-coupon-system.php';
 
         new KH_Event_Meta();
         new KH_Location_Meta();
@@ -60,6 +64,10 @@ class KH_Events {
         KH_Event_Timezone::instance();
         KH_Event_GDPR::instance();
         KH_Event_Permissions::instance();
+        KH_Event_Integrations::instance();
+        KH_Event_Analytics::instance();
+        KH_Events_WooCommerce_Bridge::instance();
+        KH_Events_Coupon_System::instance();
 
         // Register widget
         add_action('widgets_init', array($this, 'register_widgets'));
@@ -100,6 +108,11 @@ class KH_Events {
 
         // Dashboard widget
         add_action('wp_dashboard_setup', array($this, 'add_dashboard_widget'));
+
+        // Initialize new Phase 3 components
+        KH_Events_Email_Marketing::instance();
+        KH_Events_Analytics::instance();
+        KH_Events_Enhanced_API::instance();
     }
 
     private function register_post_types() {

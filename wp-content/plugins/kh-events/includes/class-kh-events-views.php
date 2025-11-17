@@ -22,6 +22,58 @@ class KH_Events_Views {
         add_shortcode('kh_events_dashboard', array($this, 'dashboard_shortcode'));
     }
 
+    /**
+     * Load template with theme override support
+     *
+     * @param string $template_name Template name without .php extension
+     * @param array $args Variables to pass to template
+     * @return string Template output
+     */
+    public function load_template($template_name, $args = array()) {
+        $template_path = $this->locate_template($template_name);
+
+        if (!$template_path) {
+            return '';
+        }
+
+        // Extract variables for template use
+        if (!empty($args) && is_array($args)) {
+            extract($args);
+        }
+
+        ob_start();
+        include $template_path;
+        return ob_get_clean();
+    }
+
+    /**
+     * Locate template with theme override support
+     *
+     * @param string $template_name Template name without .php extension
+     * @return string|false Template file path or false if not found
+     */
+    private function locate_template($template_name) {
+        $template = $template_name . '.php';
+
+        // Check theme override first
+        $theme_template = locate_template(array(
+            'kh-events/' . $template,
+            'kh-events/templates/' . $template
+        ));
+
+        if ($theme_template) {
+            return $theme_template;
+        }
+
+        // Use plugin template
+        $plugin_template = KH_EVENTS_DIR . 'templates/' . $template;
+        if (file_exists($plugin_template)) {
+            return $plugin_template;
+        }
+
+        return false;
+    }
+
     public function enqueue_scripts() {
         wp_enqueue_style('kh-events-styles', KH_EVENTS_URL . 'assets/css/kh-events.css', array(), KH_EVENTS_VERSION);
         wp_enqueue_script('kh-events-scripts', KH_EVENTS_URL . 'assets/js/kh-events.js', array('jquery'), KH_EVENTS_VERSION, true);
@@ -313,55 +365,24 @@ class KH_Events_Views {
             $next_year++;
         }
 
-        ?>
-        <div class="kh-events-calendar" data-category="<?php echo esc_attr($category); ?>" data-tag="<?php echo esc_attr($tag); ?>">
-            <div class="kh-calendar-navigation">
-                <a href="#" class="kh-nav-link" data-month="<?php echo $prev_month; ?>" data-year="<?php echo $prev_year; ?>">&laquo; <?php _e('Previous', 'kh-events'); ?></a>
-                <h2><?php echo date('F Y', $first_day); ?></h2>
-                <a href="#" class="kh-nav-link" data-month="<?php echo $next_month; ?>" data-year="<?php echo $next_year; ?>"><?php _e('Next', 'kh-events'); ?> &raquo;</a>
-            </div>
-            <table class="kh-calendar-table">
-                <thead>
-                    <tr>
-                        <th><?php _e('Sun', 'kh-events'); ?></th>
-                        <th><?php _e('Mon', 'kh-events'); ?></th>
-                        <th><?php _e('Tue', 'kh-events'); ?></th>
-                        <th><?php _e('Wed', 'kh-events'); ?></th>
-                        <th><?php _e('Thu', 'kh-events'); ?></th>
-                        <th><?php _e('Fri', 'kh-events'); ?></th>
-                        <th><?php _e('Sat', 'kh-events'); ?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    $day = 1;
-                    for ($week = 0; $week < 6; $week++) {
-                        echo '<tr>';
-                        for ($weekday = 0; $weekday < 7; $weekday++) {
-                            if ($week == 0 && $weekday < $day_of_week) {
-                                echo '<td class="kh-empty-cell"></td>';
-                            } elseif ($day > $days_in_month) {
-                                echo '<td class="kh-empty-cell"></td>';
-                            } else {
-                                $date_key = sprintf('%04d-%02d-%02d', $year, $month, $day);
-                                $day_events = isset($events[$date_key]) ? $events[$date_key] : array();
-                                echo '<td class="kh-day-cell">';
-                                echo '<div class="kh-day-number">' . $day . '</div>';
-                                foreach ($day_events as $event) {
-                                    echo '<div class="kh-event-item"><a href="' . get_permalink($event->ID) . '">' . get_the_title($event->ID) . '</a></div>';
-                                }
-                                echo '</td>';
-                                $day++;
-                            }
-                        }
-                        echo '</tr>';
-                        if ($day > $days_in_month) break;
-                    }
-                    ?>
-                </tbody>
-            </table>
-        </div>
-        <?php
+        // Prepare template variables
+        $template_vars = array(
+            'atts' => $atts,
+            'month' => $month,
+            'year' => $year,
+            'first_day' => $first_day,
+            'days_in_month' => $days_in_month,
+            'day_of_week' => $day_of_week,
+            'events' => $events,
+            'prev_month' => $prev_month,
+            'prev_year' => $prev_year,
+            'next_month' => $next_month,
+            'next_year' => $next_year,
+            'category' => $category,
+            'tag' => $tag
+        );
+
+        echo $this->load_template('calendar', $template_vars);
     }
 
     private function get_events_for_month($month, $year, $category = '', $tag = '') {
@@ -463,28 +484,13 @@ class KH_Events_Views {
             'end_date' => date('Y-m-d', strtotime('+1 year')),
         ));
 
-        ?>
-        <div class="kh-events-list">
-            <?php if ($events): ?>
-                <?php foreach ($events as $event): ?>
-                    <div class="kh-event-item">
-                        <h3><a href="<?php echo get_permalink($event->ID); ?>"><?php echo get_the_title($event->ID); ?></a></h3>
-                        <div class="kh-event-meta">
-                            <span class="kh-event-date"><?php echo get_post_meta($event->ID, '_kh_event_start_date', true); ?></span>
-                            <span class="kh-event-time"><?php echo get_post_meta($event->ID, '_kh_event_start_time', true); ?> - <?php echo get_post_meta($event->ID, '_kh_event_end_time', true); ?></span>
-                            <?php
-                            $event_status = KH_Event_Status::instance()->get_status_display($event->ID);
-                            echo '<span class="kh-event-status-display kh-event-status-' . esc_attr($event_status['status']) . '" style="background-color: ' . esc_attr($event_status['color']) . ';">' . esc_html($event_status['label']) . '</span>';
-                            ?>
-                        </div>
-                        <div class="kh-event-excerpt"><?php echo get_the_excerpt($event->ID); ?></div>
-                    </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <p><?php _e('No upcoming events found.', 'kh-events'); ?></p>
-            <?php endif; ?>
-        </div>
-        <?php
+        // Prepare template variables
+        $template_vars = array(
+            'atts' => $atts,
+            'events' => $events
+        );
+
+        echo $this->load_template('event-list', $template_vars);
     }
 
     public function day_shortcode($atts) {
@@ -630,45 +636,18 @@ class KH_Events_Views {
             }
         }
 
-        ?>
-        <div class="kh-events-week">
-            <div class="kh-week-navigation">
-                <a href="#" class="kh-week-nav kh-week-prev" data-direction="prev">&larr; <?php _e('Previous Week', 'kh-events'); ?></a>
-                <h2><?php echo date('F j', strtotime($start_of_week)) . ' - ' . date('F j, Y', strtotime($end_of_week)); ?></h2>
-                <a href="#" class="kh-week-nav kh-week-next" data-direction="next"><?php _e('Next Week', 'kh-events'); ?> &rarr;</a>
-            </div>
+        // Prepare template variables
+        $template_vars = array(
+            'atts' => $atts,
+            'date' => $date,
+            'start_of_week' => $start_of_week,
+            'end_of_week' => $end_of_week,
+            'events_by_day' => $events_by_day,
+            'category' => $category,
+            'tag' => $tag
+        );
 
-            <div class="kh-week-grid">
-                <?php foreach ($events_by_day as $day_date => $day_events): ?>
-                    <div class="kh-week-day">
-                        <h3><?php echo date('D M j', strtotime($day_date)); ?></h3>
-                        <div class="kh-day-events">
-                            <?php if (!empty($day_events)): ?>
-                                <?php foreach ($day_events as $event): ?>
-                                    <div class="kh-event-item">
-                                        <h4><a href="<?php echo get_permalink($event->ID); ?>"><?php echo get_the_title($event->ID); ?></a></h4>
-                                        <div class="kh-event-meta">
-                                            <span class="kh-event-time"><?php echo get_post_meta($event->ID, '_kh_event_start_time', true); ?> - <?php echo get_post_meta($event->ID, '_kh_event_end_time', true); ?></span>
-                                        </div>
-                                        <div class="kh-event-location">
-                                            <?php
-                                            $location_id = get_post_meta($event->ID, '_kh_event_location', true);
-                                            if ($location_id) {
-                                                echo get_the_title($location_id);
-                                            }
-                                            ?>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <p class="kh-no-events"><?php _e('No events', 'kh-events'); ?></p>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php
+        echo $this->load_template('calendar-week', $template_vars);
     }
 
     public function photo_shortcode($atts) {
@@ -719,42 +698,14 @@ class KH_Events_Views {
         $events = get_posts($args);
         $columns = intval($atts['columns']);
 
-        ?>
-        <div class="kh-events-photo" data-columns="<?php echo $columns; ?>">
-            <?php if ($events): ?>
-                <?php foreach ($events as $event): ?>
-                    <div class="kh-photo-event-item">
-                        <div class="kh-photo-event-image">
-                            <?php
-                            if (has_post_thumbnail($event->ID)) {
-                                echo get_the_post_thumbnail($event->ID, 'medium');
-                            } else {
-                                echo '<div class="kh-no-image">' . __('No Image', 'kh-events') . '</div>';
-                            }
-                            ?>
-                        </div>
-                        <div class="kh-photo-event-content">
-                            <h3><a href="<?php echo get_permalink($event->ID); ?>"><?php echo get_the_title($event->ID); ?></a></h3>
-                            <div class="kh-event-meta">
-                                <span class="kh-event-date"><?php echo get_post_meta($event->ID, '_kh_event_start_date', true); ?></span>
-                                <span class="kh-event-time"><?php echo get_post_meta($event->ID, '_kh_event_start_time', true); ?> - <?php echo get_post_meta($event->ID, '_kh_event_end_time', true); ?></span>
-                            </div>
-                            <div class="kh-event-location">
-                                <?php
-                                $location_id = get_post_meta($event->ID, '_kh_event_location', true);
-                                if ($location_id) {
-                                    echo get_the_title($location_id);
-                                }
-                                ?>
-                            </div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <p><?php _e('No upcoming events found.', 'kh-events'); ?></p>
-            <?php endif; ?>
-        </div>
-        <?php
+        // Prepare template variables
+        $template_vars = array(
+            'atts' => $atts,
+            'events' => $events,
+            'columns' => $columns
+        );
+
+        echo $this->load_template('calendar-photo', $template_vars);
     }
 
     public function ical_shortcode($atts) {
@@ -1010,71 +961,19 @@ class KH_Events_Views {
             'limit' => 10,
         ), $atts);
 
-        ob_start();
-        ?>
-        <div class="kh-events-search" data-limit="<?php echo esc_attr($atts['limit']); ?>">
-            <div class="kh-search-form">
-                <div class="kh-search-input-wrapper">
-                    <input type="text" class="kh-search-input" placeholder="<?php echo esc_attr($atts['placeholder']); ?>">
-                    <button type="button" class="kh-search-button">
-                        <span class="kh-search-icon">🔍</span>
-                    </button>
-                </div>
+        // Get filter options
+        $search_filters = array(
+            'categories' => get_terms(array('taxonomy' => 'kh_event_category', 'hide_empty' => false)),
+            'locations' => get_posts(array('post_type' => 'kh_location', 'posts_per_page' => -1))
+        );
 
-                <?php if ($atts['show_filters'] === 'true'): ?>
-                <div class="kh-search-filters">
-                    <div class="kh-filter-row">
-                        <select class="kh-category-filter">
-                            <option value=""><?php _e('All Categories', 'kh-events'); ?></option>
-                            <?php
-                            $categories = get_terms(array('taxonomy' => 'kh_event_category', 'hide_empty' => false));
-                            foreach ($categories as $category) {
-                                echo '<option value="' . esc_attr($category->slug) . '">' . esc_html($category->name) . '</option>';
-                            }
-                            ?>
-                        </select>
+        // Prepare template variables
+        $template_vars = array(
+            'atts' => $atts,
+            'search_filters' => $search_filters
+        );
 
-                        <select class="kh-tag-filter">
-                            <option value=""><?php _e('All Tags', 'kh-events'); ?></option>
-                            <?php
-                            $tags = get_terms(array('taxonomy' => 'kh_event_tag', 'hide_empty' => false));
-                            foreach ($tags as $tag) {
-                                echo '<option value="' . esc_attr($tag->slug) . '">' . esc_html($tag->name) . '</option>';
-                            }
-                            ?>
-                        </select>
-
-                        <select class="kh-status-filter">
-                            <option value=""><?php _e('All Statuses', 'kh-events'); ?></option>
-                            <?php
-                            $statuses = KH_Event_Status::instance()->get_statuses();
-                            foreach ($statuses as $status_key => $status_data) {
-                                echo '<option value="' . esc_attr($status_key) . '">' . esc_html($status_data['label']) . '</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-
-                    <div class="kh-filter-row">
-                        <input type="text" class="kh-location-filter" placeholder="<?php _e('Location', 'kh-events'); ?>">
-
-                        <input type="date" class="kh-start-date-filter" placeholder="<?php _e('Start Date', 'kh-events'); ?>">
-
-                        <input type="date" class="kh-end-date-filter" placeholder="<?php _e('End Date', 'kh-events'); ?>">
-                    </div>
-
-                    <button type="button" class="kh-clear-filters"><?php _e('Clear Filters', 'kh-events'); ?></button>
-                </div>
-                <?php endif; ?>
-            </div>
-
-            <div class="kh-search-results">
-                <div class="kh-search-status"><?php _e('Enter search terms to find events.', 'kh-events'); ?></div>
-                <div class="kh-results-container"></div>
-            </div>
-        </div>
-        <?php
-        return ob_get_clean();
+        return $this->load_template('event-search', $template_vars);
     }
 
     public function submit_shortcode($atts) {

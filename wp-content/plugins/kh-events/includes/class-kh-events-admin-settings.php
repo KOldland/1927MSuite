@@ -243,6 +243,102 @@ class KH_Events_Admin_Settings {
             'kh_events_permissions_section'
         );
 
+        // Integrations Settings
+        register_setting('kh_events_integrations', 'kh_events_integrations_settings', array($this, 'sanitize_integrations_settings'));
+
+        add_settings_section(
+            'kh_events_integrations_zoom_section',
+            __('Zoom Integration', 'kh-events'),
+            array($this, 'zoom_section_callback'),
+            'kh_events_integrations'
+        );
+
+        add_settings_field(
+            'kh_events_zoom_client_id',
+            __('Zoom Client ID', 'kh-events'),
+            array($this, 'zoom_client_id_field_callback'),
+            'kh_events_integrations',
+            'kh_events_integrations_zoom_section'
+        );
+
+        add_settings_field(
+            'kh_events_zoom_client_secret',
+            __('Zoom Client Secret', 'kh-events'),
+            array($this, 'zoom_client_secret_field_callback'),
+            'kh_events_integrations',
+            'kh_events_integrations_zoom_section'
+        );
+
+        add_settings_field(
+            'kh_events_zoom_connection',
+            __('Zoom Connection', 'kh-events'),
+            array($this, 'zoom_connection_field_callback'),
+            'kh_events_integrations',
+            'kh_events_integrations_zoom_section'
+        );
+
+        add_settings_section(
+            'kh_events_integrations_eventbrite_section',
+            __('Eventbrite Integration', 'kh-events'),
+            array($this, 'eventbrite_section_callback'),
+            'kh_events_integrations'
+        );
+
+        add_settings_field(
+            'kh_events_eventbrite_client_id',
+            __('Eventbrite Client ID', 'kh-events'),
+            array($this, 'eventbrite_client_id_field_callback'),
+            'kh_events_integrations',
+            'kh_events_integrations_eventbrite_section'
+        );
+
+        add_settings_field(
+            'kh_events_eventbrite_client_secret',
+            __('Eventbrite Client Secret', 'kh-events'),
+            array($this, 'eventbrite_client_secret_field_callback'),
+            'kh_events_integrations',
+            'kh_events_integrations_eventbrite_section'
+        );
+
+        add_settings_field(
+            'kh_events_eventbrite_connection',
+            __('Eventbrite Connection', 'kh-events'),
+            array($this, 'eventbrite_connection_field_callback'),
+            'kh_events_integrations',
+            'kh_events_integrations_eventbrite_section'
+        );
+
+        add_settings_section(
+            'kh_events_integrations_facebook_section',
+            __('Facebook Integration', 'kh-events'),
+            array($this, 'facebook_section_callback'),
+            'kh_events_integrations'
+        );
+
+        add_settings_field(
+            'kh_events_facebook_app_id',
+            __('Facebook App ID', 'kh-events'),
+            array($this, 'facebook_app_id_field_callback'),
+            'kh_events_integrations',
+            'kh_events_integrations_facebook_section'
+        );
+
+        add_settings_field(
+            'kh_events_facebook_app_secret',
+            __('Facebook App Secret', 'kh-events'),
+            array($this, 'facebook_app_secret_field_callback'),
+            'kh_events_integrations',
+            'kh_events_integrations_facebook_section'
+        );
+
+        add_settings_field(
+            'kh_events_facebook_connection',
+            __('Facebook Connection', 'kh-events'),
+            array($this, 'facebook_connection_field_callback'),
+            'kh_events_integrations',
+            'kh_events_integrations_facebook_section'
+        );
+
         // GDPR Settings
         register_setting('kh_events_gdpr', 'kh_events_gdpr_settings', array($this, 'sanitize_gdpr_settings'));
 
@@ -251,6 +347,40 @@ class KH_Events_Admin_Settings {
             __('GDPR Compliance Settings', 'kh-events'),
             array($this, 'gdpr_section_callback'),
             'kh_events_gdpr'
+        );
+
+        // Analytics Settings
+        register_setting('kh_events_analytics', 'kh_events_analytics_settings', array($this, 'sanitize_analytics_settings'));
+
+        add_settings_section(
+            'kh_events_analytics_general_section',
+            __('Analytics Configuration', 'kh-events'),
+            array($this, 'analytics_section_callback'),
+            'kh_events_analytics'
+        );
+
+        add_settings_field(
+            'kh_events_enable_analytics',
+            __('Enable Analytics', 'kh-events'),
+            array($this, 'enable_analytics_field_callback'),
+            'kh_events_analytics',
+            'kh_events_analytics_general_section'
+        );
+
+        add_settings_field(
+            'kh_events_analytics_retention',
+            __('Data Retention (Days)', 'kh-events'),
+            array($this, 'analytics_retention_field_callback'),
+            'kh_events_analytics',
+            'kh_events_analytics_general_section'
+        );
+
+        add_settings_field(
+            'kh_events_analytics_dashboard',
+            __('Dashboard Widgets', 'kh-events'),
+            array($this, 'analytics_dashboard_field_callback'),
+            'kh_events_analytics',
+            'kh_events_analytics_general_section'
         );
 
         add_settings_field(
@@ -307,6 +437,8 @@ class KH_Events_Admin_Settings {
             'display' => __('Display', 'kh-events'),
             'payment' => __('Payment', 'kh-events'),
             'permissions' => __('Permissions', 'kh-events'),
+            'integrations' => __('Integrations', 'kh-events'),
+            'analytics' => __('Analytics', 'kh-events'),
             'gdpr' => __('GDPR', 'kh-events'),
         );
 
@@ -346,6 +478,14 @@ class KH_Events_Admin_Settings {
                     case 'permissions':
                         settings_fields('kh_events_permissions');
                         do_settings_sections('kh_events_permissions');
+                        break;
+                    case 'integrations':
+                        settings_fields('kh_events_integrations');
+                        do_settings_sections('kh_events_integrations');
+                        break;
+                    case 'analytics':
+                        settings_fields('kh_events_analytics');
+                        do_settings_sections('kh_events_analytics');
                         break;
                     case 'gdpr':
                         settings_fields('kh_events_gdpr');
@@ -672,6 +812,179 @@ class KH_Events_Admin_Settings {
         return self::get_option('gdpr', $key, $default);
     }
 
+    // Integrations Settings Callbacks
+
+    public function sanitize_integrations_settings($settings) {
+        $sanitized = array();
+
+        // Zoom settings
+        if (isset($settings['zoom'])) {
+            $sanitized['zoom'] = array(
+                'client_id' => sanitize_text_field($settings['zoom']['client_id'] ?? ''),
+                'client_secret' => sanitize_text_field($settings['zoom']['client_secret'] ?? ''),
+            );
+        }
+
+        // Eventbrite settings
+        if (isset($settings['eventbrite'])) {
+            $sanitized['eventbrite'] = array(
+                'client_id' => sanitize_text_field($settings['eventbrite']['client_id'] ?? ''),
+                'client_secret' => sanitize_text_field($settings['eventbrite']['client_secret'] ?? ''),
+            );
+        }
+
+        // Facebook settings
+        if (isset($settings['facebook'])) {
+            $sanitized['facebook'] = array(
+                'app_id' => sanitize_text_field($settings['facebook']['app_id'] ?? ''),
+                'app_secret' => sanitize_text_field($settings['facebook']['app_secret'] ?? ''),
+                'page_id' => sanitize_text_field($settings['facebook']['page_id'] ?? ''),
+            );
+        }
+
+        return $sanitized;
+    }
+
+    // Zoom Callbacks
+    public function zoom_section_callback() {
+        echo '<p>' . __('Connect your Zoom account to automatically create meetings for events.', 'kh-events') . '</p>';
+        echo '<p>' . sprintf(__('Get your API credentials from the <a href="%s" target="_blank">Zoom Marketplace</a>.', 'kh-events'), 'https://marketplace.zoom.us/') . '</p>';
+    }
+
+    public function zoom_client_id_field_callback() {
+        $settings = get_option('kh_events_integrations_settings', array());
+        $client_id = $settings['zoom']['client_id'] ?? '';
+
+        echo '<input type="text" name="kh_events_integrations_settings[zoom][client_id]" value="' . esc_attr($client_id) . '" class="regular-text">';
+        echo '<p class="description">' . __('Your Zoom OAuth Client ID.', 'kh-events') . '</p>';
+    }
+
+    public function zoom_client_secret_field_callback() {
+        $settings = get_option('kh_events_integrations_settings', array());
+        $client_secret = $settings['zoom']['client_secret'] ?? '';
+
+        echo '<input type="password" name="kh_events_integrations_settings[zoom][client_secret]" value="' . esc_attr($client_secret) . '" class="regular-text">';
+        echo '<p class="description">' . __('Your Zoom OAuth Client Secret.', 'kh-events') . '</p>';
+    }
+
+    public function zoom_connection_field_callback() {
+        if (!class_exists('KH_Event_Integrations')) {
+            require_once KH_EVENTS_DIR . 'includes/class-kh-event-integrations.php';
+        }
+
+        $integrations = KH_Event_Integrations::instance();
+
+        if ($integrations->is_zoom_connected()) {
+            echo '<p style="color: green;">✓ ' . __('Connected to Zoom', 'kh-events') . '</p>';
+            echo '<p><a href="#" class="button" id="kh-refresh-zoom-token">' . __('Refresh Token', 'kh-events') . '</a></p>';
+        } else {
+            $auth_url = $integrations->get_zoom_auth_url();
+            if ($auth_url) {
+                echo '<p><a href="' . esc_url($auth_url) . '" class="button button-primary">' . __('Connect to Zoom', 'kh-events') . '</a></p>';
+            } else {
+                echo '<p>' . __('Please enter your Zoom API credentials above.', 'kh-events') . '</p>';
+            }
+        }
+    }
+
+    // Eventbrite Callbacks
+    public function eventbrite_section_callback() {
+        echo '<p>' . __('Connect your Eventbrite account to sync events and manage tickets.', 'kh-events') . '</p>';
+        echo '<p>' . sprintf(__('Get your API credentials from <a href="%s" target="_blank">Eventbrite Developer</a>.', 'kh-events'), 'https://www.eventbrite.com/platform/') . '</p>';
+    }
+
+    public function eventbrite_client_id_field_callback() {
+        $settings = get_option('kh_events_integrations_settings', array());
+        $client_id = $settings['eventbrite']['client_id'] ?? '';
+
+        echo '<input type="text" name="kh_events_integrations_settings[eventbrite][client_id]" value="' . esc_attr($client_id) . '" class="regular-text">';
+        echo '<p class="description">' . __('Your Eventbrite OAuth Client ID.', 'kh-events') . '</p>';
+    }
+
+    public function eventbrite_client_secret_field_callback() {
+        $settings = get_option('kh_events_integrations_settings', array());
+        $client_secret = $settings['eventbrite']['client_secret'] ?? '';
+
+        echo '<input type="password" name="kh_events_integrations_settings[eventbrite][client_secret]" value="' . esc_attr($client_secret) . '" class="regular-text">';
+        echo '<p class="description">' . __('Your Eventbrite OAuth Client Secret.', 'kh-events') . '</p>';
+    }
+
+    public function eventbrite_connection_field_callback() {
+        if (!class_exists('KH_Event_Integrations')) {
+            require_once KH_EVENTS_DIR . 'includes/class-kh-event-integrations.php';
+        }
+
+        $integrations = KH_Event_Integrations::instance();
+
+        if ($integrations->is_eventbrite_connected()) {
+            echo '<p style="color: green;">✓ ' . __('Connected to Eventbrite', 'kh-events') . '</p>';
+        } else {
+            $auth_url = $integrations->get_eventbrite_auth_url();
+            if ($auth_url) {
+                echo '<p><a href="' . esc_url($auth_url) . '" class="button button-primary">' . __('Connect to Eventbrite', 'kh-events') . '</a></p>';
+            } else {
+                echo '<p>' . __('Please enter your Eventbrite API credentials above.', 'kh-events') . '</p>';
+            }
+        }
+    }
+
+    // Facebook Callbacks
+    public function facebook_section_callback() {
+        echo '<p>' . __('Connect your Facebook account to create events and engage with your audience.', 'kh-events') . '</p>';
+        echo '<p>' . sprintf(__('Create a Facebook App at <a href="%s" target="_blank">Facebook Developers</a>.', 'kh-events'), 'https://developers.facebook.com/') . '</p>';
+    }
+
+    public function facebook_app_id_field_callback() {
+        $settings = get_option('kh_events_integrations_settings', array());
+        $app_id = $settings['facebook']['app_id'] ?? '';
+
+        echo '<input type="text" name="kh_events_integrations_settings[facebook][app_id]" value="' . esc_attr($app_id) . '" class="regular-text">';
+        echo '<p class="description">' . __('Your Facebook App ID.', 'kh-events') . '</p>';
+    }
+
+    public function facebook_app_secret_field_callback() {
+        $settings = get_option('kh_events_integrations_settings', array());
+        $app_secret = $settings['facebook']['app_secret'] ?? '';
+
+        echo '<input type="password" name="kh_events_integrations_settings[facebook][app_secret]" value="' . esc_attr($app_secret) . '" class="regular-text">';
+        echo '<p class="description">' . __('Your Facebook App Secret.', 'kh-events') . '</p>';
+    }
+
+    public function facebook_connection_field_callback() {
+        if (!class_exists('KH_Event_Integrations')) {
+            require_once KH_EVENTS_DIR . 'includes/class-kh-event-integrations.php';
+        }
+
+        $integrations = KH_Event_Integrations::instance();
+        $settings = get_option('kh_events_integrations_settings', array());
+
+        if ($integrations->is_facebook_connected()) {
+            echo '<p style="color: green;">✓ ' . __('Connected to Facebook', 'kh-events') . '</p>';
+
+            // Page selection
+            $pages = $settings['facebook']['pages'] ?? array();
+            $selected_page = $settings['facebook']['page_id'] ?? '';
+
+            if (!empty($pages)) {
+                echo '<select name="kh_events_integrations_settings[facebook][page_id]">';
+                echo '<option value="">' . __('Select a page...', 'kh-events') . '</option>';
+                foreach ($pages as $page) {
+                    $selected = selected($selected_page, $page['id'], false);
+                    echo '<option value="' . esc_attr($page['id']) . '" ' . $selected . '>' . esc_html($page['name']) . '</option>';
+                }
+                echo '</select>';
+                echo '<p class="description">' . __('Select the Facebook page to post events to.', 'kh-events') . '</p>';
+            }
+        } else {
+            $auth_url = $integrations->get_facebook_auth_url();
+            if ($auth_url) {
+                echo '<p><a href="' . esc_url($auth_url) . '" class="button button-primary">' . __('Connect to Facebook', 'kh-events') . '</a></p>';
+            } else {
+                echo '<p>' . __('Please enter your Facebook App credentials above.', 'kh-events') . '</p>';
+            }
+        }
+    }
+
     // Permissions Settings Callbacks
 
     public function sanitize_permissions_settings($settings) {
@@ -771,5 +1084,48 @@ class KH_Events_Admin_Settings {
         echo '</table>';
         echo '</div>';
         echo '<p class="description">' . __('Configure permissions for each user group. Changes take effect immediately.', 'kh-events') . '</p>';
+    }
+
+    // Analytics Settings Callbacks
+
+    public function sanitize_analytics_settings($settings) {
+        $sanitized = array();
+
+        $sanitized['enable_analytics'] = isset($settings['enable_analytics']) ? 1 : 0;
+        $sanitized['data_retention_days'] = absint($settings['data_retention_days'] ?? 730); // Default 2 years
+        $sanitized['enable_dashboard_widgets'] = isset($settings['enable_dashboard_widgets']) ? 1 : 0;
+
+        return $sanitized;
+    }
+
+    public function analytics_section_callback() {
+        echo '<p>' . __('Configure analytics and reporting settings for your events.', 'kh-events') . '</p>';
+        echo '<p>' . __('Analytics data helps you understand event performance, user engagement, and business metrics.', 'kh-events') . '</p>';
+    }
+
+    public function enable_analytics_field_callback() {
+        $settings = get_option('kh_events_analytics_settings', array());
+        $enabled = $settings['enable_analytics'] ?? 1;
+
+        echo '<input type="checkbox" name="kh_events_analytics_settings[enable_analytics]" value="1" ' . checked(1, $enabled, false) . '>';
+        echo '<label for="kh_events_analytics_settings[enable_analytics]">' . __('Enable event analytics tracking', 'kh-events') . '</label>';
+        echo '<p class="description">' . __('Collect and analyze data about event views, bookings, payments, and attendance.', 'kh-events') . '</p>';
+    }
+
+    public function analytics_retention_field_callback() {
+        $settings = get_option('kh_events_analytics_settings', array());
+        $retention = $settings['data_retention_days'] ?? 730;
+
+        echo '<input type="number" name="kh_events_analytics_settings[data_retention_days]" value="' . esc_attr($retention) . '" min="30" max="2555" class="small-text">';
+        echo '<p class="description">' . __('Number of days to keep analytics data (minimum 30 days, maximum ~7 years).', 'kh-events') . '</p>';
+    }
+
+    public function analytics_dashboard_field_callback() {
+        $settings = get_option('kh_events_analytics_settings', array());
+        $enabled = $settings['enable_dashboard_widgets'] ?? 1;
+
+        echo '<input type="checkbox" name="kh_events_analytics_settings[enable_dashboard_widgets]" value="1" ' . checked(1, $enabled, false) . '>';
+        echo '<label for="kh_events_analytics_settings[enable_dashboard_widgets]">' . __('Show analytics widgets on WordPress dashboard', 'kh-events') . '</label>';
+        echo '<p class="description">' . __('Display key metrics and popular events on the main WordPress dashboard.', 'kh-events') . '</p>';
     }
 }
