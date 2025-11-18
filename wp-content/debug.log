@@ -454,3 +454,11 @@ Stack trace:
 Stack trace:
 #0 {main}
   thrown in Command line code on line 3
+[17-Nov-2025 22:16:10 UTC] WordPress database error Table 'magazine_db.wp_kh_smma_audit_log' doesn't exist for query SHOW FULL COLUMNS FROM `wp_kh_smma_audit_log` made by KH_SMMA\Services\SocialPublishingService->enqueue_post, KH_SMMA\Services\AuditLogger->log
+[17-Nov-2025 22:19:14 UTC] PHP Fatal error:  Uncaught Error: Class "KH_SMMA\Services\ScheduleQueueProcessor" not found in Command line code:3
+Stack trace:
+#0 {main}
+  thrown in Command line code on line 3
+[17-Nov-2025 22:19:30 UTC] WordPress database error Table 'magazine_db.wp_kh_smma_audit_log' doesn't exist for query SHOW FULL COLUMNS FROM `wp_kh_smma_audit_log` made by KH_SMMA\Services\SocialPublishingService->enqueue_post, KH_SMMA\Services\AuditLogger->log
+[17-Nov-2025 22:29:13 UTC] WordPress database error Table 'magazine_db.wp_kh_smma_audit_log' doesn't exist for query SHOW FULL COLUMNS FROM `wp_kh_smma_audit_log` made by KH_SMMA\Services\SocialPublishingService->enqueue_post, KH_SMMA\Services\AuditLogger->log
+[17-Nov-2025 22:29:13 UTC] WordPress database error Table 'magazine_db.wp_kh_smma_audit_log' doesn't exist for query SHOW FULL COLUMNS FROM `wp_kh_smma_audit_log` made by KH_SMMA\Services\ScheduleQueueProcessor->process_due_schedules, KH_SMMA\Services\ScheduleQueueProcessor->handle_sandbox_preview, KH_SMMA\Services\AuditLogger->log
