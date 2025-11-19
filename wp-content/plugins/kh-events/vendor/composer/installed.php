@@ -3,7 +3,7 @@
         'name' => 'kh-events/kh-events',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '55802a7beeb0734c89218798789797fc307eee1b',
+        'reference' => 'b5f903b1a78515807b965ea3ff01eb4e9ebacd0d',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'kh-events/kh-events' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '55802a7beeb0734c89218798789797fc307eee1b',
+            'reference' => 'b5f903b1a78515807b965ea3ff01eb4e9ebacd0d',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -3,7 +3,7 @@
         'name' => 'khmarketing/kh-bounce',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'e7ebf91f11fb1436675b5ca0378afd5a690abbcc',
+        'reference' => 'b5f903b1a78515807b965ea3ff01eb4e9ebacd0d',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -22,7 +22,7 @@
         'khmarketing/kh-bounce' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'e7ebf91f11fb1436675b5ca0378afd5a690abbcc',
+            'reference' => 'b5f903b1a78515807b965ea3ff01eb4e9ebacd0d',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

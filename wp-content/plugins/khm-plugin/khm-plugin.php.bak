@@ -27,7 +27,7 @@ if (is_admin()) {
 }
 
 // Initialize Attribution System
-add_action('plugins_loaded', 'khm_init_attribution_system');
+add_action('init', 'khm_init_attribution_system');
 
 function khm_init_attribution_system() {
     // Create attribution manager instance
